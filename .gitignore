@@ -1,0 +1,11 @@
+node_modules
+dist
+*.pdf
+*.PDF
+*.png
+*.jpg
+*.jpeg
+*テスト*
+*原本*
+*解答*
+SPECIFICATION.md

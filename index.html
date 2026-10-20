@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BlockWorld</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<main id="app">
+
+  <!-- はじめの画面：2つから えらぶ -->
+  <section id="start" class="view active">
+    <h1>🧱 BlockWorld</h1>
+    <p class="lead">もんだいを解いて ブロックをゲット！<br>ためた時間（さいだい3分）で、ブロックワールドであそぼう。</p>
+    <div class="mc-status status-pill" aria-live="polite"></div>
+    <p id="sNote" class="note"></p>
+    <div class="choices2">
+      <button id="goQuiz" class="big-btn quiz" type="button"><span class="bi">✏️</span><b>もんだいを解く</b><small>ブロックと じかんが もらえるよ</small></button>
+      <a id="goPlay" class="big-btn play" href="play/"><span class="bi">⛏️</span><b>ブロックワールドであそぶ</b><small>ためた ブロックで けんちく！</small></a>
+    </div>
+    <button id="tSound" class="icon" type="button" aria-label="効果音の切りかえ">🔊</button>
+  </section>
+
+  <!-- もんだい：どんどん出る -->
+  <section id="quiz" class="view">
+    <div class="q-top">
+      <button id="qBack" class="btn small" type="button">← もどる</button>
+      <span id="qCount" class="pill"></span>
+      <span id="qWrong" class="pill review"></span>
+      <span class="mc-status pill green"></span>
+      <a class="btn small green-btn" href="play/">⛏️ あそぶ</a>
+    </div>
+    <div class="card q-card">
+      <div id="badge" class="badge" hidden>🔁 ふくしゅう（まえに まちがえた問題）</div>
+      <div id="inst" class="inst"></div>
+      <div id="stem" class="stem"></div>
+      <div id="vis" class="vis"></div>
+    </div>
+    <div class="actions">
+      <button id="hintBtn" class="btn small" type="button">💡 ヒント</button>
+      <button id="memoBtn" class="btn small" type="button">✏️ 計算メモを開く</button>
+    </div>
+    <div id="hintBox" class="card hint" hidden></div>
+    <div id="fb" class="feedback" hidden></div>
+  </section>
+
+</main>
+
+<!-- 画面下部：算数パッド -->
+<div id="pad" aria-label="入力パッド">
+  <div id="choices" class="choices" hidden></div>
+  <div class="keys">
+    <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+    <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="bs" class="fn" aria-label="1文字消す">⌫</button>
+    <button type="button" data-k="6">6</button><button type="button" data-k="7">7</button><button type="button" data-k="8">8</button>
+    <button type="button" data-k="9">9</button><button type="button" data-k="0">0</button><button type="button" data-k="clr" class="fn" aria-label="クリア">C</button>
+    <button type="button" data-k="swap" class="fn wide2">⇅ つぎの枠へ</button>
+    <button type="button" data-k="." class="dot">.</button>
+    <button type="button" data-k="enter" id="enter" class="enter wide3">決定！</button>
+  </div>
+</div>
+
+<!-- 手書きメモ -->
+<div id="memo" hidden>
+  <div class="memo-bar">
+    <button id="memoPen" class="btn small on" type="button">✏️ えんぴつ</button>
+    <button id="memoEr" class="btn small" type="button">🧽 消しゴム</button>
+    <button id="memoClr" class="btn small" type="button">🗑️ 全消去</button>
+    <button id="memoClose" class="btn small" type="button">✖ とじる</button>
+  </div>
+  <canvas id="memoCv"></canvas>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
