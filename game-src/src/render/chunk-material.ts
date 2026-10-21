@@ -52,7 +52,7 @@ const fragmentShader = /* glsl */ `
   out vec4 fragColor;
 
   void main() {
-    vec4 tex = texture(uAtlas, vec3(fract(vUv), vLayer));
+    vec4 tex = texture(uAtlas, vec3(fract(vUv.x), 1.0 - fract(vUv.y), vLayer));
     if (tex.a < 0.05) discard;
     float diffuse = uAmbient + uSunIntensity * max(dot(normalize(vNormal), uSunDir), 0.0);
     vec3 rgb = tex.rgb * vShade * diffuse;

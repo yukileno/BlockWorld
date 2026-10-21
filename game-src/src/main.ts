@@ -8,6 +8,8 @@ import { createGameScene } from "./render/scene";
 import { DAY_LENGTH_SECONDS, STARTUP_PHASE, skyStateAt } from "./render/sky";
 import { createBlockTextureArray, createTextureAtlas } from "./render/texture-atlas";
 import { BuildTimer } from "./game/build-timer";
+import { TNT_BLAST_RADIUS, TntFuses, explode } from "./game/tnt";
+import { TntEffects } from "./render/tnt-effects";
 import { PlayerController } from "./player/controller";
 import { PlayerPositionStore } from "./player/position-store";
 import { BlockInteraction } from "./player/interaction";
@@ -18,8 +20,8 @@ import { TeleportModal } from "./ui/teleport-modal";
 import { isTouchDevice, TouchControls } from "./ui/touch-controls";
 import { EditStore } from "./world/edit-store";
 import { findPleasantSpawn } from "./world/spawn";
-import { isSolid } from "./world/blocks";
-import { CHUNK_HEIGHT } from "./world/coords";
+import { BlockId, isSolid } from "./world/blocks";
+import { CHUNK_HEIGHT, affectedChunkCoords, chunkKey } from "./world/coords";
 import { findGroundHeight } from "./player/physics";
 import {
   type ChunkGenerator,
@@ -117,6 +119,7 @@ function boot(): void {
   let chunkMeshes: ChunkMeshManager | null = null;
   let clouds: Clouds | null = null;
   let highlight: THREE.LineSegments | null = null;
+  let tntEffects: TntEffects | null = null;
   let cpuView: CpuRenderer | null = null;
   try {
     const gameScene = createGameScene(app);
@@ -144,6 +147,7 @@ function boot(): void {
     );
     highlight.visible = false;
     gameScene.scene.add(highlight);
+    tntEffects = new TntEffects(gameScene.scene);
   } catch (webglError) {
     console.warn("WebGL unavailable, switching to the CPU raycaster:", webglError);
     const cpu = new CpuRenderer(app, world, SEED);
@@ -432,6 +436,35 @@ function boot(): void {
     editStore.record(x, y, z, id);
   };
 
+  // TNT: F key / 🔥 button lights it, and a blast sets neighbouring TNT off in a chain.
+  const fuses = new TntFuses();
+  interaction.onIgnite = (x, y, z) => {
+    if (fuses.ignite(x, y, z)) showToast("🔥 ひがついた！ はなれて〜！");
+  };
+  const detonate = (x: number, y: number, z: number): void => {
+    const blast = explode(
+      { x, y, z },
+      (bx, by, bz) => world.getBlock(bx, by, bz),
+      (bx, by, bz, id) => {
+        world.setBlock(bx, by, bz, id);
+      },
+      CHUNK_HEIGHT,
+      TNT_BLAST_RADIUS,
+    );
+    editStore.recordMany(blast.destroyed.map((c) => ({ ...c, id: BlockId.AIR })));
+    for (const c of blast.chained) fuses.igniteChain(c.x, c.y, c.z);
+    const dirty = new Map<string, { cx: number; cz: number }>();
+    for (const c of blast.destroyed) {
+      for (const chunk of affectedChunkCoords(c.x, c.z)) {
+        dirty.set(chunkKey(chunk.cx, chunk.cz), chunk);
+      }
+    }
+    for (const { cx, cz } of dirty.values()) {
+      chunkMeshes?.updateChunk(cx, cz);
+    }
+    tntEffects?.spawnBlast(blast.center, TNT_BLAST_RADIUS);
+  };
+
   // On-screen controls for touch devices and Chromebooks — joystick, action buttons.
   const touchControls = new TouchControls(app, {
     isActive: () => player.isActive,
@@ -446,6 +479,9 @@ function boot(): void {
     },
     onPlace: () => {
       interaction.placeTargetedBlock();
+    },
+    onIgnite: () => {
+      interaction.igniteTargetedBlock();
     },
   });
   let touchVisible = false;
@@ -538,6 +574,14 @@ function boot(): void {
     for (const { cx, cz } of streamer.drainDirty(MESH_BUDGET_PER_FRAME)) {
       chunkMeshes?.updateChunk(cx, cz);
     }
+
+    // 着火中のTNT：あそび中だけ時間が進む（もちもの・一時停止中はヒューズも止まる）
+    if (player.isActive && !inventory.isOpen && !teleportModal.isOpen) {
+      const due = fuses.tick(dt, (bx, by, bz) => world.getBlock(bx, by, bz) === BlockId.TNT);
+      for (const tnt of due) detonate(tnt.x, tnt.y, tnt.z);
+    }
+    tntEffects?.showFuses(fuses.active);
+    tntEffects?.update(dt);
 
     view.applySky(skyStateAt(elapsed));
     clouds?.update(player.position.x, player.position.z, elapsed);

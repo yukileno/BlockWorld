@@ -58,6 +58,7 @@ export interface TouchControlHandlers {
   readonly onLook: (pixelsX: number, pixelsY: number) => void;
   readonly onBreak: () => void;
   readonly onPlace: () => void;
+  readonly onIgnite: () => void;
 }
 
 interface StickTouch {
@@ -115,6 +116,15 @@ export class TouchControls {
         {
           press: () => {
             if (this.handlers.isActive()) this.handlers.onPlace();
+          },
+        },
+      ),
+      this.makeButton(
+        "touch-ignite",
+        '<span class="tb-icon">🔥</span><span class="tb-label">ひをつける</span><span class="tb-key">F</span>',
+        {
+          press: () => {
+            if (this.handlers.isActive()) this.handlers.onIgnite();
           },
         },
       ),

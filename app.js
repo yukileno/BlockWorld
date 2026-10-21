@@ -41,6 +41,7 @@ let save = loadSave();
 /* ---- ブロックわーるど連携：同じブラウザの localStorage を通して、ブロックとあそび時間をわたす ---- */
 const MC_HOTBAR_KEY = 'maikura_hotbar_v2', MC_TIMER_KEY = 'maikura_build_timer_v1';
 const MC_MAX_SEC = 180, MC_SEC_PER_Q = 20, MC_BLOCKS_PER_Q = 3;
+const MC_TNT = [27, 'TNT'], MC_TNT_RATE = 0.05; // TNTは算数の景品だけ。1問ごとに5%でGET
 const MC_BLOCKS = [[1, '草ブロック'], [2, '土'], [10, '丸石'], [11, '木板'], [6, '原木'], [12, 'レンガ'], [13, 'ガラス'], [18, '金ブロック'], [19, 'ダイヤブロック']];
 function mcSlots() {
   try { const a = JSON.parse(localStorage.getItem(MC_HOTBAR_KEY) || 'null'); if (Array.isArray(a) && a.length === 9) return a; } catch (e) { /* 読めなければ空から */ }
@@ -55,12 +56,13 @@ function mcReward(units) {
   try {
     const slots = mcSlots();
     for (let u = 0; u < units; u++) {
-      const [id, name] = PK(MC_BLOCKS);
+      const isTnt = Math.random() < MC_TNT_RATE;
+      const [id, name] = isTnt ? MC_TNT : PK(MC_BLOCKS);
       let i = slots.findIndex(x => x.blockId === id && x.count > 0);
       if (i < 0) i = slots.findIndex(x => !x.blockId || x.count <= 0);
       if (i < 0) continue;
-      slots[i] = { blockId: id, count: (slots[i].blockId === id ? slots[i].count : 0) + MC_BLOCKS_PER_Q };
-      got[name] = (got[name] || 0) + MC_BLOCKS_PER_Q;
+      slots[i] = { blockId: id, count: (slots[i].blockId === id ? slots[i].count : 0) + (isTnt ? 1 : MC_BLOCKS_PER_Q) };
+      got[name] = (got[name] || 0) + (isTnt ? 1 : MC_BLOCKS_PER_Q);
       const next = Math.min(MC_MAX_SEC, sec + MC_SEC_PER_Q); added += next - sec; sec = next;
     }
     localStorage.setItem(MC_HOTBAR_KEY, JSON.stringify(slots));

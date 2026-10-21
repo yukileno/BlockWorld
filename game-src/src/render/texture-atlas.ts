@@ -43,6 +43,8 @@ const TILE_STYLES: Record<TileKind, TileStyle> = {
   [TileKind.WOOL_BLUE]: { base: [48, 65, 168], alpha: 255, speckleAmount: 12 },
   [TileKind.WOOL_YELLOW]: { base: [230, 195, 45], alpha: 255, speckleAmount: 12 },
   [TileKind.WOOL_GREEN]: { base: [85, 130, 40], alpha: 255, speckleAmount: 12 },
+  [TileKind.TNT_SIDE]: { base: [190, 40, 35], alpha: 255, speckleAmount: 6 },
+  [TileKind.TNT_TOP]: { base: [150, 120, 90], alpha: 255, speckleAmount: 8 },
 };
 
 function paintSpeckles(
@@ -213,6 +215,37 @@ function paintTileAt(
       ctx.fillStyle = bookColors[(bi + 3) % bookColors.length] ?? "#2e7d32";
       ctx.fillRect(x + 1 + bi * 3, y + 9, 2, 6);
     }
+  }
+
+  // TNT: red sticks with a white "TNT" label band
+  if (tile === TileKind.TNT_SIDE) {
+    ctx.fillStyle = "rgba(120, 20, 20, 0.8)";
+    for (let px = 4; px < ATLAS_TILE_SIZE; px += 5) ctx.fillRect(x + px, y, 1, ATLAS_TILE_SIZE);
+    ctx.fillStyle = "rgba(235, 230, 215, 1)";
+    ctx.fillRect(x, y + 5, ATLAS_TILE_SIZE, 6);
+    ctx.fillStyle = "rgba(40, 30, 30, 1)";
+    // T
+    ctx.fillRect(x + 1, y + 6, 3, 1);
+    ctx.fillRect(x + 2, y + 7, 1, 3);
+    // N
+    ctx.fillRect(x + 6, y + 6, 1, 4);
+    ctx.fillRect(x + 7, y + 7, 1, 1);
+    ctx.fillRect(x + 8, y + 8, 1, 1);
+    ctx.fillRect(x + 9, y + 6, 1, 4);
+    // T
+    ctx.fillRect(x + 11, y + 6, 3, 1);
+    ctx.fillRect(x + 12, y + 7, 1, 3);
+  }
+
+  // TNT top: wood-colored lid with the fuse hole
+  if (tile === TileKind.TNT_TOP) {
+    ctx.strokeStyle = "rgba(90, 60, 35, 0.9)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, ATLAS_TILE_SIZE - 1, ATLAS_TILE_SIZE - 1);
+    ctx.fillStyle = "rgba(40, 30, 25, 1)";
+    ctx.fillRect(x + 7, y + 7, 2, 2);
+    ctx.fillStyle = "rgba(240, 160, 40, 1)";
+    ctx.fillRect(x + 7, y + 6, 1, 1);
   }
 
   // Glowstone: warm glowing clusters

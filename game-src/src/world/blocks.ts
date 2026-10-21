@@ -27,6 +27,7 @@ export const BlockId = {
   WOOL_BLUE: 24,
   WOOL_YELLOW: 25,
   WOOL_GREEN: 26,
+  TNT: 27,
 } as const;
 
 export type BlockId = (typeof BlockId)[keyof typeof BlockId];
@@ -88,6 +89,7 @@ export const BLOCKS: Readonly<Record<BlockId, BlockDef>> = {
   [BlockId.WOOL_BLUE]: block(BlockId.WOOL_BLUE, "wool_blue", "青の羊毛"),
   [BlockId.WOOL_YELLOW]: block(BlockId.WOOL_YELLOW, "wool_yellow", "黄の羊毛"),
   [BlockId.WOOL_GREEN]: block(BlockId.WOOL_GREEN, "wool_green", "緑の羊毛"),
+  [BlockId.TNT]: block(BlockId.TNT, "tnt", "TNT"),
 };
 
 export function isSolid(id: BlockId): boolean {

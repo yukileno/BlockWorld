@@ -109,6 +109,9 @@ export class BlockInteraction {
       } else if (e.code === "KeyN") {
         e.preventDefault();
         this.breakTargetedBlock();
+      } else if (e.code === "KeyF") {
+        e.preventDefault();
+        this.igniteTargetedBlock();
       }
     });
   }
@@ -147,6 +150,18 @@ export class BlockInteraction {
     this.remesh(hit.blockX, hit.blockZ);
   }
 
+  /** Fired when the player lights the TNT under the crosshair. */
+  public onIgnite?: (x: number, y: number, z: number) => void;
+
+  /** Light the TNT under the crosshair (F key / 🔥 button). Anything that
+   * isn't TNT is ignored. */
+  igniteTargetedBlock(): void {
+    const hit = this.raycastFromCamera();
+    if (!hit) return;
+    if (this.world.getBlock(hit.blockX, hit.blockY, hit.blockZ) !== BlockId.TNT) return;
+    this.onIgnite?.(hit.blockX, hit.blockY, hit.blockZ);
+  }
+
   public onNoBlocksAvailable?: () => void;
   /** Fired with the id of every block the player breaks (it goes back into the bag). */
   public onBlockCollected?: (id: BlockId) => void;
@@ -179,7 +194,8 @@ export class BlockInteraction {
     return aabbIntersectsSolid(aabb, (bx, by, bz) => bx === x && by === y && bz === z);
   }
 
-  private remesh(worldX: number, worldZ: number): void {
+  /** Remesh every chunk a change at this column could visually affect. */
+  remesh(worldX: number, worldZ: number): void {
     for (const { cx, cz } of affectedChunkCoords(worldX, worldZ)) {
       this.chunkMeshes.updateChunk(cx, cz);
     }

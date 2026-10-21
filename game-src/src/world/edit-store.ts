@@ -42,6 +42,20 @@ export class EditStore {
     this.save();
   }
 
+  /** 大量の変更（爆発など）を、保存は1回だけでまとめて記録する。 */
+  recordMany(cells: readonly { x: number; y: number; z: number; id: BlockId }[]): void {
+    for (const { x, y, z, id } of cells) {
+      const key = chunkKey(worldToChunk(x), worldToChunk(z));
+      let chunkEdits = this.edits.get(key);
+      if (!chunkEdits) {
+        chunkEdits = new Map();
+        this.edits.set(key, chunkEdits);
+      }
+      chunkEdits.set(Chunk.index(worldToLocal(x), y, worldToLocal(z)), id);
+    }
+    this.save();
+  }
+
   /** Re-applies recorded edits onto a freshly generated chunk. */
   applyTo(chunk: Chunk): void {
     const chunkEdits = this.edits.get(chunkKey(chunk.cx, chunk.cz));

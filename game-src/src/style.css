@@ -551,6 +551,11 @@ canvas {
   background: rgba(39, 174, 96, 0.65);
 }
 
+.touch-button.touch-ignite {
+  border-color: rgba(243, 156, 18, 0.9);
+  background: rgba(211, 84, 0, 0.65);
+}
+
 .touch-button.touch-jump {
   border-color: rgba(52, 152, 219, 0.8);
   background: rgba(41, 128, 185, 0.65);

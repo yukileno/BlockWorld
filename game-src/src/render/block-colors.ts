@@ -41,4 +41,5 @@ export const BLOCK_COLORS: Readonly<Record<BlockId, BlockColor>> = {
   [BlockId.WOOL_BLUE]: uniform(48, 65, 168),
   [BlockId.WOOL_YELLOW]: uniform(230, 195, 45),
   [BlockId.WOOL_GREEN]: uniform(85, 130, 40),
+  [BlockId.TNT]: { top: [150, 120, 90], side: [190, 40, 35] },
 };

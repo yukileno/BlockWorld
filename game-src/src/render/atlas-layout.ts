@@ -39,6 +39,8 @@ export const TileKind = {
   WOOL_BLUE: 25,
   WOOL_YELLOW: 26,
   WOOL_GREEN: 27,
+  TNT_SIDE: 28,
+  TNT_TOP: 29,
 } as const;
 
 export type TileKind = (typeof TileKind)[keyof typeof TileKind];
@@ -117,6 +119,8 @@ export function tileForBlockFace(id: BlockId, face: Face): TileKind {
       return TileKind.WOOL_YELLOW;
     case BlockId.WOOL_GREEN:
       return TileKind.WOOL_GREEN;
+    case BlockId.TNT:
+      return face === "top" || face === "bottom" ? TileKind.TNT_TOP : TileKind.TNT_SIDE;
     case BlockId.AIR:
       return TileKind.STONE; // never sampled — the mesher skips air outright
   }
