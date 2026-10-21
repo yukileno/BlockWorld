@@ -68,13 +68,19 @@ export class Inventory {
     paletteTitle.className = "inventory-section-title";
     paletteTitle.textContent = this.isInfinite
       ? "🎒 全ブロックパレット（クリックで選択中のクイックバーにセット）"
-      : "🎒 獲得したブロック（問題を解いてゲットしたもちもの）";
+      : "🎒 もちもの";
     win.appendChild(paletteTitle);
 
     const acquiredGrid = document.createElement("div");
     acquiredGrid.className = "inventory-acquired-grid";
     this.acquiredContainer = acquiredGrid;
     win.appendChild(acquiredGrid);
+
+    const nameLine = document.createElement("div");
+    nameLine.className = "inventory-name-line";
+    nameLine.textContent = "ブロックをタップすると、えらんだクイックバーにセットされるよ";
+    this.nameLine = nameLine;
+    win.appendChild(nameLine);
 
     // Section 2: Hotbar (Quickbar)
     const hotbarTitle = document.createElement("div");
@@ -127,6 +133,7 @@ export class Inventory {
   }
 
   private acquiredContainer: HTMLElement | null = null;
+  private nameLine: HTMLElement | null = null;
 
   private refreshAcquiredBlocks(): void {
     if (!this.acquiredContainer) return;
@@ -135,33 +142,11 @@ export class Inventory {
     // 無限モードの場合は全種類のブロックを無制限で表示
     if (this.isInfinite) {
       INVENTORY_BLOCKS.forEach((blockId) => {
-        const def = BLOCKS[blockId];
-        const card = document.createElement("div");
-        card.className = "acquired-block-card";
-
-        const icon = renderTileIcon(this.atlasCanvas, blockId, 40);
-        card.appendChild(icon);
-
-        const info = document.createElement("div");
-        info.className = "acquired-block-info";
-
-        const name = document.createElement("div");
-        name.className = "acquired-block-name";
-        name.textContent = def.label;
-        info.appendChild(name);
-
-        const countBadge = document.createElement("div");
-        countBadge.className = "acquired-block-count";
-        countBadge.textContent = "∞";
-        info.appendChild(countBadge);
-
-        card.appendChild(info);
-
-        card.addEventListener("click", () => {
-          this.setBlockToHotbar(blockId, 999);
-        });
-
-        this.acquiredContainer?.appendChild(card);
+        this.acquiredContainer?.appendChild(
+          this.makeBlockSlot(blockId, "∞", () => {
+            this.setBlockToHotbar(blockId, 999);
+          }),
+        );
       });
       return;
     }
@@ -195,34 +180,36 @@ export class Inventory {
 
     // 獲得したブロックのみを表示
     acquiredMap.forEach((count, blockId) => {
-      const def = BLOCKS[blockId];
-      const card = document.createElement("div");
-      card.className = "acquired-block-card";
-
-      const icon = renderTileIcon(this.atlasCanvas, blockId, 40);
-      card.appendChild(icon);
-
-      const info = document.createElement("div");
-      info.className = "acquired-block-info";
-
-      const name = document.createElement("div");
-      name.className = "acquired-block-name";
-      name.textContent = def.label;
-      info.appendChild(name);
-
-      const countBadge = document.createElement("div");
-      countBadge.className = "acquired-block-count";
-      countBadge.textContent = `×${count.toString()}こ`;
-      info.appendChild(countBadge);
-
-      card.appendChild(info);
-
-      card.addEventListener("click", () => {
-        this.setBlockToHotbar(blockId, count);
-      });
-
-      this.acquiredContainer?.appendChild(card);
+      this.acquiredContainer?.appendChild(
+        this.makeBlockSlot(blockId, count.toString(), () => {
+          this.setBlockToHotbar(blockId, count);
+        }),
+      );
     });
+  }
+
+  /** 本物のマイクラのように、ブロックの絵と右下の個数だけの四角いマス。名前は下の行に出す。 */
+  private makeBlockSlot(blockId: BlockId, countText: string, onPick: () => void): HTMLElement {
+    const def = BLOCKS[blockId];
+    const slot = document.createElement("div");
+    slot.className = "inv-slot acquired-slot";
+    slot.setAttribute("data-tooltip", `${def.label} ×${countText}`);
+    slot.appendChild(renderTileIcon(this.atlasCanvas, blockId, 32));
+
+    const countLabel = document.createElement("span");
+    countLabel.className = "inv-count-label";
+    countLabel.textContent = countText;
+    slot.appendChild(countLabel);
+
+    const showName = (): void => {
+      if (this.nameLine) this.nameLine.textContent = `${def.label}  ×${countText}`;
+    };
+    slot.addEventListener("mouseenter", showName);
+    slot.addEventListener("click", () => {
+      showName();
+      onPick();
+    });
+    return slot;
   }
 
   private refreshHotbarSlots(): void {
@@ -247,7 +234,7 @@ export class Inventory {
         const countText = this.isInfinite ? "∞" : `×${slotData.count.toString()}`;
         slot.setAttribute("data-tooltip", `[${(i + 1).toString()}] ${def.label} (${countText})`);
 
-        const icon = renderTileIcon(this.atlasCanvas, slotData.blockId, 36);
+        const icon = renderTileIcon(this.atlasCanvas, slotData.blockId, 32);
         slot.appendChild(icon);
 
         const countLabel = document.createElement("span");

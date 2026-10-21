@@ -618,7 +618,7 @@ canvas {
     inset 2px 2px 0 #dbdbdb,
     inset -2px -2px 0 #555;
   padding: 16px 20px;
-  width: min(92vw, 480px);
+  width: min(94vw, 440px);
   max-height: 90vh;
   overflow-y: auto;
   display: flex;
@@ -665,65 +665,29 @@ canvas {
 
 .inventory-acquired-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(9, 1fr);
+  gap: 2px;
   background: #8b8b8b;
   border: 2px solid #373737;
   border-right-color: #fff;
   border-bottom-color: #fff;
-  padding: 8px;
-  max-height: 220px;
-  min-height: 80px;
+  padding: 4px;
+  max-height: 200px;
+  min-height: 56px;
   overflow-y: auto;
+  align-content: start;
 }
 
-.acquired-block-card {
-  background: #c6c6c6;
-  border: 2px solid #fff;
-  border-right-color: #555;
-  border-bottom-color: #555;
-  border-radius: 4px;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  user-select: none;
-  transition: background 0.1s;
+.inventory-name-line {
+  min-height: 18px;
+  font-size: 13px;
+  color: #404040;
+  text-align: center;
 }
 
-.acquired-block-card:hover {
-  background: #dcdcdc;
-  border-color: #ffeaa7 #555 #555 #ffeaa7;
-}
-
-.acquired-block-card:active {
-  border-color: #555 #fff #fff #555;
-  background: #b0b0b0;
-}
-
-.acquired-block-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  min-width: 0;
-}
-
-.acquired-block-name {
-  font-size: 12px;
-  font-weight: bold;
-  color: #2c3e50;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 75px;
-}
-
-.acquired-block-count {
-  font-size: 14px;
-  font-weight: 900;
-  color: #d35400;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+.inv-slot canvas {
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .empty-inventory-notice {
@@ -756,7 +720,7 @@ canvas {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 3px;
+  padding: 2px;
 }
 
 .inv-slot:hover {
