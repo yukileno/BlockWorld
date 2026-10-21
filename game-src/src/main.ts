@@ -10,6 +10,7 @@ import { createBlockTextureArray, createTextureAtlas } from "./render/texture-at
 import { BuildTimer } from "./game/build-timer";
 import { TNT_BLAST_RADIUS, TntFuses, explode } from "./game/tnt";
 import { TntEffects } from "./render/tnt-effects";
+import { TorchLights } from "./render/torch-lights";
 import { PlayerController } from "./player/controller";
 import { PlayerPositionStore } from "./player/position-store";
 import { BlockInteraction } from "./player/interaction";
@@ -120,10 +121,13 @@ function boot(): void {
   let clouds: Clouds | null = null;
   let highlight: THREE.LineSegments | null = null;
   let tntEffects: TntEffects | null = null;
+  let chunkMaterialRef: THREE.ShaderMaterial | null = null;
+  const torchLights = new TorchLights();
   let cpuView: CpuRenderer | null = null;
   try {
     const gameScene = createGameScene(app);
     const chunkMaterial = createChunkMaterial(createBlockTextureArray(SEED));
+    chunkMaterialRef = chunkMaterial;
     view = {
       kind: "webgl",
       camera: gameScene.camera,
@@ -434,6 +438,10 @@ function boot(): void {
 
   interaction.onEdit = (x, y, z, id) => {
     editStore.record(x, y, z, id);
+    torchLights.invalidate(world, x, z);
+  };
+  interaction.onTorchNeedsGround = () => {
+    showToast("松明は、ゆかや地面の上におこう！");
   };
 
   // TNT: F key / 🔥 button lights it, and a blast sets neighbouring TNT off in a chain.
@@ -452,6 +460,7 @@ function boot(): void {
       TNT_BLAST_RADIUS,
     );
     editStore.recordMany(blast.destroyed.map((c) => ({ ...c, id: BlockId.AIR })));
+    torchLights.invalidateAll();
     for (const c of blast.chained) fuses.igniteChain(c.x, c.y, c.z);
     const dirty = new Map<string, { cx: number; cz: number }>();
     for (const c of blast.destroyed) {
@@ -584,6 +593,9 @@ function boot(): void {
     tntEffects?.update(dt);
 
     view.applySky(skyStateAt(elapsed));
+    if (chunkMaterialRef) {
+      torchLights.update(world, player.position, chunkMaterialRef);
+    }
     clouds?.update(player.position.x, player.position.z, elapsed);
 
     const hit = interaction.raycastFromCamera();

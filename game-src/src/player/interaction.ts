@@ -132,7 +132,10 @@ export class BlockInteraction {
     const dir = new THREE.Vector3();
     this.camera.getWorldDirection(dir);
     return raycastVoxels(origin, { x: dir.x, y: dir.y, z: dir.z }, maxDistance, (x, y, z) =>
-      isSolid(this.world.getBlock(x, y, z)),
+      {
+        const id = this.world.getBlock(x, y, z);
+        return isSolid(id) || id === BlockId.TORCH;
+      },
     );
   }
 
@@ -147,6 +150,13 @@ export class BlockInteraction {
     this.world.setBlock(hit.blockX, hit.blockY, hit.blockZ, BlockId.AIR);
     this.onBlockCollected?.(current);
     this.onEdit?.(hit.blockX, hit.blockY, hit.blockZ, BlockId.AIR);
+
+    // A torch standing on the broken block has nothing to stand on: it comes along.
+    if (this.world.getBlock(hit.blockX, hit.blockY + 1, hit.blockZ) === BlockId.TORCH) {
+      this.world.setBlock(hit.blockX, hit.blockY + 1, hit.blockZ, BlockId.AIR);
+      this.onBlockCollected?.(BlockId.TORCH);
+      this.onEdit?.(hit.blockX, hit.blockY + 1, hit.blockZ, BlockId.AIR);
+    }
     this.remesh(hit.blockX, hit.blockZ);
   }
 
@@ -163,6 +173,8 @@ export class BlockInteraction {
   }
 
   public onNoBlocksAvailable?: () => void;
+  /** Fired when a torch is aimed somewhere with no solid block underneath. */
+  public onTorchNeedsGround?: () => void;
   /** Fired with the id of every block the player breaks (it goes back into the bag). */
   public onBlockCollected?: (id: BlockId) => void;
 
@@ -179,6 +191,13 @@ export class BlockInteraction {
       return;
     }
     const blockToPlace = this.hotbar.selectedBlock;
+    if (
+      blockToPlace === BlockId.TORCH &&
+      !isSolid(this.world.getBlock(hit.placeX, hit.placeY - 1, hit.placeZ))
+    ) {
+      this.onTorchNeedsGround?.();
+      return;
+    }
     if (!this.hotbar.consumeSelectedBlock()) {
       this.onNoBlocksAvailable?.();
       return;

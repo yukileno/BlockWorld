@@ -42,7 +42,7 @@ let save = loadSave();
 const MC_HOTBAR_KEY = 'maikura_hotbar_v2', MC_TIMER_KEY = 'maikura_build_timer_v1';
 const MC_MAX_SEC = 180, MC_SEC_PER_Q = 20, MC_BLOCKS_PER_Q = 3;
 const MC_TNT = [27, 'TNT'], MC_TNT_RATE = 0.05; // TNTは算数の景品だけ。1問ごとに5%でGET
-const MC_BLOCKS = [[1, '草ブロック'], [2, '土'], [10, '丸石'], [11, '木板'], [6, '原木'], [12, 'レンガ'], [13, 'ガラス'], [18, '金ブロック'], [19, 'ダイヤブロック']];
+const MC_BLOCKS = [[1, '草ブロック'], [2, '土'], [10, '丸石'], [11, '木板'], [6, '原木'], [12, 'レンガ'], [13, 'ガラス'], [18, '金ブロック'], [19, 'ダイヤブロック'], [28, '松明']];
 function mcSlots() {
   try { const a = JSON.parse(localStorage.getItem(MC_HOTBAR_KEY) || 'null'); if (Array.isArray(a) && a.length === 9) return a; } catch (e) { /* 読めなければ空から */ }
   return Array.from({ length: 9 }, () => ({ blockId: null, count: 0 }));

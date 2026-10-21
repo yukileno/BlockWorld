@@ -50,6 +50,20 @@ export class Chunk {
     return this.blocks[Chunk.index(lx, ly, lz)] as BlockId;
   }
 
+  /** Local coordinates of every block with this id (a fast scan, for rare blocks like torches). */
+  findBlocks(id: BlockId): [number, number, number][] {
+    const found: [number, number, number][] = [];
+    let i = this.blocks.indexOf(id);
+    while (i >= 0) {
+      const lx = i % CHUNK_SIZE;
+      const lz = Math.floor(i / CHUNK_SIZE) % CHUNK_SIZE;
+      const ly = Math.floor(i / (CHUNK_SIZE * CHUNK_SIZE));
+      found.push([lx, ly, lz]);
+      i = this.blocks.indexOf(id, i + 1);
+    }
+    return found;
+  }
+
   setBlock(lx: number, ly: number, lz: number, id: BlockId): void {
     if (!Chunk.inBounds(lx, ly, lz)) {
       throw new RangeError(

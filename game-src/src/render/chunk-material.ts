@@ -17,6 +17,7 @@ const vertexShader = /* glsl */ `
   out vec3 vShade;
   out vec3 vNormal;
   out float vFogDepth;
+  out vec3 vWorld;
 
   void main() {
     vUv = uv;
@@ -25,6 +26,7 @@ const vertexShader = /* glsl */ `
     // Chunk meshes are translation-only, so the object-space normal is
     // already the world normal.
     vNormal = normal;
+    vWorld = (modelMatrix * vec4(position, 1.0)).xyz;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     vFogDepth = -mv.z;
     gl_Position = projectionMatrix * mv;
@@ -42,7 +44,12 @@ const fragmentShader = /* glsl */ `
   uniform vec3 uFogColor;
   uniform float uFogNear;
   uniform float uFogFar;
+  uniform vec3 uTorch[8];
+  uniform int uTorchCount;
+  uniform float uTorchRadius;
+  uniform float uTorchStrength;
 
+  in vec3 vWorld;
   in vec2 vUv;
   in float vLayer;
   in vec3 vShade;
@@ -55,7 +62,14 @@ const fragmentShader = /* glsl */ `
     vec4 tex = texture(uAtlas, vec3(fract(vUv.x), 1.0 - fract(vUv.y), vLayer));
     if (tex.a < 0.05) discard;
     float diffuse = uAmbient + uSunIntensity * max(dot(normalize(vNormal), uSunDir), 0.0);
-    vec3 rgb = tex.rgb * vShade * diffuse;
+    // Warm glow from nearby torches: squared falloff, strongest at night.
+    vec3 warm = vec3(0.0);
+    for (int i = 0; i < 8; i++) {
+      if (i >= uTorchCount) break;
+      float a = clamp(1.0 - distance(vWorld, uTorch[i]) / uTorchRadius, 0.0, 1.0);
+      warm += vec3(1.0, 0.7, 0.36) * a * a;
+    }
+    vec3 rgb = tex.rgb * vShade * (vec3(diffuse) + warm * uTorchStrength);
     float fog = clamp((vFogDepth - uFogNear) / (uFogFar - uFogNear), 0.0, 1.0);
     rgb = mix(rgb, uFogColor, fog);
     fragColor = vec4(rgb, tex.a);
@@ -74,6 +88,10 @@ export function createChunkMaterial(atlasArray: THREE.DataArrayTexture): THREE.S
       uFogColor: { value: new THREE.Color(0x87ceeb) },
       uFogNear: { value: FOG_NEAR },
       uFogFar: { value: FOG_FAR },
+      uTorch: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
+      uTorchCount: { value: 0 },
+      uTorchRadius: { value: 10 },
+      uTorchStrength: { value: 1.0 },
     },
     vertexShader,
     fragmentShader,
@@ -95,6 +113,7 @@ export function updateChunkMaterial(material: THREE.ShaderMaterial, sky: CpuSkyS
   const day = sky.sunIntensity / 2.3;
   if (u.uSunIntensity) u.uSunIntensity.value = 0.45 + 0.35 * day;
   if (u.uAmbient) u.uAmbient.value = 0.75 + 0.35 * day;
+  if (u.uTorchStrength) u.uTorchStrength.value = 0.6 + 1.6 * (1 - day);
   const fog = u.uFogColor?.value as THREE.Color | undefined;
   fog?.setRGB(sky.skyColor[0], sky.skyColor[1], sky.skyColor[2]);
 }

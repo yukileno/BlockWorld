@@ -45,6 +45,7 @@ const TILE_STYLES: Record<TileKind, TileStyle> = {
   [TileKind.WOOL_GREEN]: { base: [85, 130, 40], alpha: 255, speckleAmount: 12 },
   [TileKind.TNT_SIDE]: { base: [190, 40, 35], alpha: 255, speckleAmount: 6 },
   [TileKind.TNT_TOP]: { base: [150, 120, 90], alpha: 255, speckleAmount: 8 },
+  [TileKind.TORCH]: { base: [0, 0, 0], alpha: 0, speckleAmount: 0 },
 };
 
 function paintSpeckles(
@@ -246,6 +247,25 @@ function paintTileAt(
     ctx.fillRect(x + 7, y + 7, 2, 2);
     ctx.fillStyle = "rgba(240, 160, 40, 1)";
     ctx.fillRect(x + 7, y + 6, 1, 1);
+  }
+
+  // Torch: the 2px-wide stick (columns 7-8, rows 6-15) is what the mesh samples;
+  // the extra glow pixels around the flame only show in the hotbar icon.
+  if (tile === TileKind.TORCH) {
+    ctx.fillStyle = "rgba(120, 80, 40, 1)";
+    ctx.fillRect(x + 7, y + 8, 2, 8);
+    ctx.fillStyle = "rgba(160, 110, 55, 1)";
+    ctx.fillRect(x + 7, y + 8, 1, 8);
+    ctx.fillStyle = "rgba(255, 150, 30, 1)";
+    ctx.fillRect(x + 7, y + 6, 2, 2);
+    ctx.fillStyle = "rgba(255, 235, 120, 1)";
+    ctx.fillRect(x + 7, y + 6, 1, 1);
+    ctx.fillStyle = "rgba(255, 200, 70, 1)";
+    ctx.fillRect(x + 7, y + 4, 2, 2);
+    ctx.fillStyle = "rgba(255, 120, 20, 0.9)";
+    ctx.fillRect(x + 8, y + 3, 1, 1);
+    ctx.fillRect(x + 6, y + 5, 1, 2);
+    ctx.fillRect(x + 9, y + 5, 1, 2);
   }
 
   // Glowstone: warm glowing clusters

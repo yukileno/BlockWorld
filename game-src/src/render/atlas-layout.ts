@@ -41,6 +41,7 @@ export const TileKind = {
   WOOL_GREEN: 27,
   TNT_SIDE: 28,
   TNT_TOP: 29,
+  TORCH: 30,
 } as const;
 
 export type TileKind = (typeof TileKind)[keyof typeof TileKind];
@@ -119,6 +120,8 @@ export function tileForBlockFace(id: BlockId, face: Face): TileKind {
       return TileKind.WOOL_YELLOW;
     case BlockId.WOOL_GREEN:
       return TileKind.WOOL_GREEN;
+    case BlockId.TORCH:
+      return TileKind.TORCH;
     case BlockId.TNT:
       return face === "top" || face === "bottom" ? TileKind.TNT_TOP : TileKind.TNT_SIDE;
     case BlockId.AIR:

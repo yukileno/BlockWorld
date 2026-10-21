@@ -194,7 +194,9 @@ export function meshChunk(chunk: Chunk, neighbors: NeighborLookup): MeshData {
   const block = makeLocalReader(chunk, neighbors);
   const occludes = (lx: number, ly: number, lz: number): boolean => {
     const id = block(lx, ly, lz);
-    return id !== BlockId.AIR && id !== BlockId.WATER && id !== BlockId.LEAVES;
+    return (
+      id !== BlockId.AIR && id !== BlockId.WATER && id !== BlockId.LEAVES && id !== BlockId.TORCH
+    );
   };
 
   const positions: number[] = [];
@@ -233,7 +235,7 @@ export function meshChunk(chunk: Chunk, neighbors: NeighborLookup): MeshData {
           local[uAxis] = i;
           local[vAxis] = j;
           const self = block(local[0], local[1], local[2]);
-          if (self === BlockId.AIR) continue;
+          if (self === BlockId.AIR || self === BlockId.TORCH) continue;
           open[0] = local[0];
           open[1] = local[1];
           open[2] = local[2];
@@ -341,6 +343,8 @@ export function meshChunk(chunk: Chunk, neighbors: NeighborLookup): MeshData {
     }
   }
 
+  emitTorches(chunk, positions, normals, uvs, colors, layers, indices);
+
   return {
     positions: new Float32Array(positions),
     normals: new Float32Array(normals),
@@ -349,6 +353,50 @@ export function meshChunk(chunk: Chunk, neighbors: NeighborLookup): MeshData {
     layers: new Float32Array(layers),
     indices: new Uint32Array(indices),
   };
+}
+
+const TORCH_HALF = 0.0625;
+const TORCH_HEIGHT = 0.625;
+/** Torches are drawn lit-from-within, above the normal 0..1 shade range. */
+const TORCH_BRIGHTNESS = 1.6;
+
+/** A torch is a thin stick (2/16 wide, 10/16 tall) standing in the middle of its cell.
+ * It never takes part in the greedy merge, so every torch in the chunk is stamped
+ * here as its own little box. */
+function emitTorches(
+  chunk: Chunk,
+  positions: number[],
+  normals: number[],
+  uvs: number[],
+  colors: number[],
+  layers: number[],
+  indices: number[],
+): void {
+  const layer = tileForBlockFace(BlockId.TORCH, "east");
+  const lo = 0.5 - TORCH_HALF;
+  const hi = 0.5 + TORCH_HALF;
+  for (const [lx, ly, lz] of chunk.findBlocks(BlockId.TORCH)) {
+    for (const spec of FACES) {
+      const base = positions.length / 3;
+      const vertical = spec.dAxis === 1;
+      for (const corner of spec.corners) {
+        positions.push(
+          lx + (corner[0] === 1 ? hi : lo),
+          ly + corner[1] * TORCH_HEIGHT,
+          lz + (corner[2] === 1 ? hi : lo),
+        );
+        normals.push(spec.normal[0], spec.normal[1], spec.normal[2]);
+        // Sample the stick column (7/16..9/16) of the tile; the top and bottom
+        // faces sample the flame rows so the top glows.
+        const across = spec.dAxis === 2 ? corner[0] : corner[2];
+        if (vertical) uvs.push(lo + corner[0] * 2 * TORCH_HALF, 0.5 + corner[2] * 0.125);
+        else uvs.push(lo + across * 2 * TORCH_HALF, corner[1] * TORCH_HEIGHT);
+        layers.push(layer);
+        colors.push(TORCH_BRIGHTNESS, TORCH_BRIGHTNESS, TORCH_BRIGHTNESS);
+      }
+      indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+    }
+  }
 }
 
 /** Emits one (possibly merged) quad: 4 vertices scaled to the rectangle,

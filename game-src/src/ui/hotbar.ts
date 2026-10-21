@@ -16,17 +16,33 @@ export function renderTileIcon(
   ctx.imageSmoothingEnabled = false;
 
   const { col, row } = tileGridPosition(tileForBlockFace(blockId, "east"));
-  ctx.drawImage(
-    atlasCanvas,
-    col * ATLAS_TILE_SIZE,
-    row * ATLAS_TILE_SIZE,
-    ATLAS_TILE_SIZE,
-    ATLAS_TILE_SIZE,
-    0,
-    0,
-    size,
-    size,
-  );
+  if (blockId === BlockId.TORCH) {
+    // A thin torch: crop to the stick so the icon isn't a speck in an empty tile.
+    const dw = (size * 6) / 13;
+    ctx.drawImage(
+      atlasCanvas,
+      col * ATLAS_TILE_SIZE + 5,
+      row * ATLAS_TILE_SIZE + 3,
+      6,
+      13,
+      (size - dw) / 2,
+      0,
+      dw,
+      size,
+    );
+  } else {
+    ctx.drawImage(
+      atlasCanvas,
+      col * ATLAS_TILE_SIZE,
+      row * ATLAS_TILE_SIZE,
+      ATLAS_TILE_SIZE,
+      ATLAS_TILE_SIZE,
+      0,
+      0,
+      size,
+      size,
+    );
+  }
   icon.style.width = "100%";
   icon.style.height = "100%";
   return icon;
