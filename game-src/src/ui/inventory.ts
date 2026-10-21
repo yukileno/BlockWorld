@@ -269,7 +269,25 @@ export class Inventory {
   }
 
   private setBlockToHotbar(blockId: BlockId, count: number): void {
-    this.hotbar.setSlot(this.targetHotbarIndex, blockId, count);
+    // ブロックは「ふやす」のではなく「うつす」。ほかのスロットにある同じブロックは空にして、
+    // もともとえらんだスロットにあった別のブロックは、あいたスロットに入れかえる。
+    const target = this.targetHotbarIndex;
+    const displaced = this.hotbar.getSlotData(target);
+    const displacedCopy =
+      displaced?.blockId != null && displaced.blockId !== blockId && displaced.count > 0
+        ? { blockId: displaced.blockId, count: displaced.count }
+        : null;
+    let freed = -1;
+    this.hotbar.getAllSlotsData().forEach((s, i) => {
+      if (i !== target && s.blockId === blockId) {
+        this.hotbar.setSlot(i, null, 0);
+        if (freed < 0) freed = i;
+      }
+    });
+    if (displacedCopy && freed >= 0) {
+      this.hotbar.setSlot(freed, displacedCopy.blockId, displacedCopy.count);
+    }
+    this.hotbar.setSlot(target, blockId, count);
     this.refreshHotbarSlots();
     this.refreshAcquiredBlocks();
   }
