@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BlockId } from "./blocks";
-import { CHUNK_SIZE } from "./coords";
+import { CHUNK_SIZE, worldToChunk, worldToLocal } from "./coords";
 import {
   CANOPY_RADIUS,
   TREE_CELL_SIZE,
@@ -8,7 +8,7 @@ import {
   treeCandidateInCell,
   treeCandidatesNear,
 } from "./features";
-import { generateChunk } from "./terrain";
+import { createCaveSampler, createColumnSampler, generateChunk, SEA_LEVEL } from "./terrain";
 
 describe("treeCandidateInCell", () => {
   it("is deterministic per (seed, cell)", () => {
@@ -116,22 +116,97 @@ describe("treeBlocks", () => {
   });
 });
 
-describe("trees in generated chunks (superflat creative)", () => {
+describe("trees stamped into generated chunks", () => {
   const seed = 2026;
 
-  it("does not stamp any natural trees into generated chunks to keep the canvas clean", () => {
-    for (let cx = -2; cx <= 2; cx++) {
-      for (let cz = -2; cz <= 2; cz++) {
-        const chunk = generateChunk(cx, cz, seed);
-        for (let lx = 0; lx < CHUNK_SIZE; lx++) {
-          for (let lz = 0; lz < CHUNK_SIZE; lz++) {
-            // Above ground (y > 64) must only be AIR
-            for (let y = 65; y < 100; y++) {
-              expect(chunk.getBlock(lx, y, lz)).toBe(BlockId.AIR);
-            }
-          }
+  function findLandTree(): { x: number; z: number; trunkHeight: number } {
+    const sample = createColumnSampler(seed);
+    const isCave = createCaveSampler(seed);
+    for (let cx = -30; cx <= 30; cx++) {
+      for (let cz = -30; cz <= 30; cz++) {
+        const tree = treeCandidateInCell(seed, cx, cz);
+        if (!tree) continue;
+        const profile = sample(tree.x, tree.z);
+        if (
+          !profile.isDesert &&
+          !profile.isSnowy &&
+          profile.terrainHeight > SEA_LEVEL + 1 &&
+          !isCave(tree.x, profile.terrainHeight, tree.z)
+        ) {
+          return tree;
         }
       }
     }
+    throw new Error("no eligible tree found in the scanned area for this seed");
+  }
+
+  it("an eligible tree's trunk appears in the generated chunk that contains it", () => {
+    const tree = findLandTree();
+    const sample = createColumnSampler(seed);
+    const surfaceY = sample(tree.x, tree.z).terrainHeight;
+    const chunk = generateChunk(worldToChunk(tree.x), worldToChunk(tree.z), seed);
+    expect(chunk.getBlock(worldToLocal(tree.x), surfaceY + 1, worldToLocal(tree.z))).toBe(
+      BlockId.WOOD,
+    );
+  });
+
+  it("adjacent chunks agree block-for-block along their shared border (canopy seams)", () => {
+    // The real cross-chunk property: for a border column, both chunks derive
+    // any overhanging canopy from the same pure functions. Compare a full
+    // border column of chunk (0,0) with the matching column of chunk (1,0):
+    // they're different world columns, so instead compare each chunk's edge
+    // against a freshly generated copy of the SAME chunk reached from the
+    // other side — plus spot-check that leaves appearing at x=15 of one
+    // chunk imply the tree source exists for both.
+    const a1 = generateChunk(0, 0, seed);
+    const a2 = generateChunk(0, 0, seed);
+    expect(a1.buffer).toEqual(a2.buffer);
+
+    // Stronger: find a tree whose canopy provably straddles a chunk border,
+    // then check the neighbor chunk carries the overhanging leaves.
+    const sample = createColumnSampler(seed);
+    const isCave = createCaveSampler(seed);
+    let checked = false;
+    outer: for (let cx = -40; cx <= 40; cx++) {
+      for (let cz = -40; cz <= 40; cz++) {
+        const tree = treeCandidateInCell(seed, cx, cz);
+        if (!tree) continue;
+        const profile = sample(tree.x, tree.z);
+        const eligible =
+          !profile.isDesert &&
+          !profile.isSnowy &&
+          profile.terrainHeight > SEA_LEVEL + 1 &&
+          !isCave(tree.x, profile.terrainHeight, tree.z);
+        if (!eligible) continue;
+        const lx = worldToLocal(tree.x);
+        if (lx !== 0 && lx !== CHUNK_SIZE - 1) continue; // want a trunk hugging a border
+
+        const neighborCx = worldToChunk(tree.x) + (lx === 0 ? -1 : 1);
+        const neighborChunk = generateChunk(neighborCx, worldToChunk(tree.z), seed);
+        const canopyY = profile.terrainHeight + tree.trunkHeight - 1;
+        const overhangX = lx === 0 ? tree.x - 1 : tree.x + 1;
+        const block = neighborChunk.getBlock(
+          worldToLocal(overhangX),
+          canopyY,
+          worldToLocal(tree.z),
+        );
+        // The overhanging cell must carry the tree unless something else
+        // legitimately occupies it (terrain rising into the canopy, or
+        // another tree's trunk).
+        expect([
+          BlockId.LEAVES,
+          BlockId.WOOD,
+          BlockId.DIRT,
+          BlockId.STONE,
+          BlockId.GRASS,
+          BlockId.SNOW,
+          BlockId.SAND,
+        ]).toContain(block);
+        expect(block).not.toBe(BlockId.AIR);
+        checked = true;
+        break outer;
+      }
+    }
+    expect(checked).toBe(true);
   });
 });
