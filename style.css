@@ -135,3 +135,29 @@ body.quizzing #pad { display: block; }
   .stem { font-size: 1.1rem; line-height: 2.1; }
   .keys button { height: 40px; }
 }
+
+/* 横に広い画面（パソコン・タブレット横向き）：テンキーを右に置いて、問題を左に寄せる。
+   スクロールしなくても、問題とテンキーが同時に見える。 */
+@media (min-width: 720px) {
+  :root { --padw: 360px; }
+  body.quizzing { padding-bottom: 16px; }
+  body.quizzing #app { max-width: none; margin: 0; padding: 12px calc(var(--padw) + 18px) 12px 16px; }
+  body.quizzing #quiz { max-width: 760px; }
+  body.quizzing #pad {
+    display: flex; left: auto; top: 0; width: var(--padw);
+    border-top: none; border-left: 3px solid var(--gold);
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+    flex-direction: column; justify-content: center; gap: 8px;
+  }
+  body.quizzing #pad .choices { max-width: none; margin: 0; }
+  body.quizzing #pad .keys { max-width: none; width: 100%; gap: 7px; margin: 0; }
+  body.quizzing #pad .keys button { height: 54px; font-size: 1.4rem; }
+  body.quizzing #pad .keys .enter { font-size: 1.25rem; }
+  body.quizzing #memo { right: var(--padw); bottom: 0; }
+  .stem { font-size: 1.5rem; line-height: 2.1; }
+}
+@media (min-width: 720px) and (max-height: 640px) {
+  body.quizzing #pad .keys button { height: 44px; }
+  .q-top { margin-bottom: 4px; }
+  .stem { line-height: 1.9; }
+}
