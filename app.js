@@ -1111,7 +1111,40 @@ function reveal() {
   showFb(`<div class="fb-title">📖 こたえ</div><div class="sol">${scr.sol || ''}</div><div>この問題は、あとでもう一度出すよ！</div>`, 'soft');
 }
 
+/* =====================================================================
+   新しいバージョンの自動チェック（タブを開きっぱなしの端末向け）
+   index.html の公開時刻（Last-Modified と ETag）が読みこみ時から変わっていたら更新する。
+   スタート画面ならそのまま再読みこみ、問題を解いている途中なら「いま更新する」ボタンを出す。
+   ===================================================================== */
+const updateCheck = { base: null, notified: false };
+async function fetchDeploySignature() {
+  try {
+    const res = await fetch('index.html', { method: 'HEAD', cache: 'no-store' });
+    if (!res.ok) return null;
+    return (res.headers.get('last-modified') || '') + '|' + (res.headers.get('etag') || '');
+  } catch (e) { return null; } // オフラインなどのときは何もしない
+}
+async function checkForUpdate() {
+  if (updateCheck.notified) return;
+  const sig = await fetchDeploySignature();
+  if (!sig || sig === '|') return;
+  if (updateCheck.base === null) { updateCheck.base = sig; return; }
+  if (sig === updateCheck.base) return;
+  updateCheck.notified = true;
+  if ($('#start').classList.contains('active')) { location.reload(); return; }
+  const bar = el('div', 'update-bar', '<span>🆕 新しいバージョンがあるよ！</span><button type="button" class="btn small">いま更新する</button>');
+  bar.querySelector('button').addEventListener('click', () => location.reload());
+  document.body.appendChild(bar);
+}
+function setupUpdateCheck() {
+  checkForUpdate();
+  setInterval(checkForUpdate, 3 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkForUpdate(); });
+  window.addEventListener('focus', checkForUpdate);
+}
+
 function init() {
+  setupUpdateCheck();
   document.addEventListener('pointerdown', () => AC(), { once: true });
   $('#goQuiz').onclick = () => { SFX.click(); view('quiz'); if (!B) loadScreen(); };
   $('#qBack').onclick = () => view('start');
