@@ -16,6 +16,10 @@
     <p class="lead">もんだいを解いて ブロックをゲット！<br>ためた時間（さいだい3分）で、ブロックワールドであそぼう。</p>
     <div class="mc-status status-pill" aria-live="polite"></div>
     <p id="sNote" class="note"></p>
+    <div class="unit-tabs" role="tablist" aria-label="れんしゅうする単元">
+      <button type="button" class="unit-tab" data-unit="area" role="tab"><b>📐 10. 面積</b><small>（テスト対策）</small></button>
+      <button type="button" class="unit-tab" data-unit="frac" role="tab"><b>🍕 9. 分数</b></button>
+    </div>
     <div class="choices2">
       <button id="goQuiz" class="big-btn quiz" type="button"><span class="bi">✏️</span><b>もんだいを解く</b><small>ブロックと じかんが もらえるよ</small></button>
       <a id="goPlay" class="big-btn play" href="play/"><span class="bi">⛏️</span><b>ブロックワールドであそぶ</b><small>ためた ブロックで けんちく！</small></a>
@@ -27,6 +31,7 @@
   <section id="quiz" class="view">
     <div class="q-top">
       <button id="qBack" class="btn small" type="button">← もどる</button>
+      <span id="qUnit" class="pill unit"></span>
       <span id="qCount" class="pill"></span>
       <span id="qWrong" class="pill review"></span>
       <span class="mc-status pill green"></span>

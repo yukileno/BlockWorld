@@ -1,7 +1,7 @@
 'use strict';
 /* =====================================================================
    BlockWorld — 問題を解いてブロックをゲットして、ブロックワールドであそぶ
-   小5算数「分数」れんしゅう（HTML5 + Vanilla JS／完全無料・外部API不使用）
+   小5算数「10. 面積」「9. 分数」れんしゅう（スタート画面で単元をきりかえ）（HTML5 + Vanilla JS／完全無料・外部API不使用）
    ===================================================================== */
 (function () {
 
@@ -30,10 +30,20 @@ const decStr = x => String(+x.toFixed(6));
    セーブデータ（localStorage）
    ===================================================================== */
 const KEY = 'blockworld.v1';
-const DEF = { wrong: [], total: 0, sound: true, manual: false };
+/* 単元ごとに復習リスト(wrongXxx)と正解数(totalXxx)を分けて保存する。単元を増やすときは UNITS と UNIT_KEYS に足す */
+const UNIT_KEYS = ['area', 'frac'];
+const UNIT_CAP = { area: 'Area', frac: 'Frac' };
+const DEF = { unit: 'area', wrongArea: [], wrongFrac: [], totalArea: 0, totalFrac: 0, wrong: [], total: 0, sound: true, manual: false };
 const clone = o => JSON.parse(JSON.stringify(o));
 function loadSave() {
-  try { return Object.assign(clone(DEF), JSON.parse(localStorage.getItem(KEY) || 'null') || {}); } catch (e) { return clone(DEF); }
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY) || 'null') || {};
+    const s = Object.assign(clone(DEF), raw);
+    if (!raw.wrongFrac && Array.isArray(raw.wrong)) { s.wrongFrac = raw.wrong; s.totalFrac = raw.total || 0; } // 以前の学習履歴は「9. 分数」へ引きつぐ
+    s.wrong = [];
+    if (!UNIT_KEYS.includes(s.unit)) s.unit = 'area';
+    return s;
+  } catch (e) { return clone(DEF); }
 }
 function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) { /* 保存できない環境でも遊べる */ } }
 let save = loadSave();
@@ -396,6 +406,222 @@ function genScreen(dai) {
 
 
 /* =====================================================================
+   「10. 面積」ジェネレーター（わくわく算数5年 第3回テスト 大問1〜6）
+   出題のたびに数がかわる。本番と同じ数がたまたま出てもOK（除外はしない）。
+   追加フィールド: num（整数も小数も入れられる数。常に「.」キーが使える）／ sel（ことば・記号をえらぶ）
+   画面の追加項目: perm＝入れかえてもよい欄のグループ ／ diag＝ひっかけミスの専用メッセージ
+   ===================================================================== */
+const NUM = (ans, extra) => Object.assign({ t: 'num', ans }, extra || {});
+const SEL = (ans, opts, extra) => Object.assign({ t: 'sel', ans, opts }, extra || {});
+const CM2 = 'cm²';
+const nf = x => String(+(+x).toFixed(2));
+const r1 = x => +x.toFixed(1);
+const AINST = '次の図形の面積を求めましょう。（式と答えを書きましょう。）';
+
+/* ---- 大問1：公式 ---- */
+const T_OPTS = ['底辺', '高さ', '上底', '下底', '対角線', '一辺'], OP_OPTS = ['＋', '－', '×', '÷'], N_OPTS = ['2', '3', '4', '10'];
+const TS = a => SEL(a, T_OPTS), OPS = a => SEL(a, OP_OPTS, { keep: true }), NS = a => SEL(a, N_OPTS, { keep: true });
+const SHAPE_NAMES = ['三角形', '平行四辺形', '台形', 'ひし形'];
+const SHAPE = {
+  tri: {
+    name: '三角形', f: '底辺×高さ÷2', wrong: ['底辺×高さ', '底辺×底辺÷2', '（底辺＋高さ）÷2'],
+    parts: o => ['三角形の面積 ＝ ', F(o), ' ', F(o + 1), ' ', F(o + 2), ' ', F(o + 3), ' ', F(o + 4)],
+    fields: () => [TS('底辺'), OPS('×'), TS('高さ'), OPS('÷'), NS('2')], tip: '三角形は、同じ三角形を2つ合わせると平行四辺形になる。だから ÷2 を忘れない！'
+  },
+  par: {
+    name: '平行四辺形', f: '底辺×高さ', wrong: ['底辺×高さ÷2', '底辺＋高さ', '底辺×底辺'],
+    parts: o => ['平行四辺形の面積 ＝ ', F(o), ' ', F(o + 1), ' ', F(o + 2)],
+    fields: () => [TS('底辺'), OPS('×'), TS('高さ')], tip: '平行四辺形は長方形に直せるから、÷2 はいらない。'
+  },
+  tra: {
+    name: '台形', f: '（上底＋下底）×高さ÷2', wrong: ['上底＋下底×高さ÷2', '（上底＋下底）×高さ', '上底×下底×高さ÷2'],
+    parts: o => ['台形の面積 ＝ （', F(o), ' ', F(o + 1), ' ', F(o + 2), '） ', F(o + 3), ' ', F(o + 4), ' ', F(o + 5), ' ', F(o + 6)],
+    fields: () => [TS('上底'), OPS('＋'), TS('下底'), OPS('×'), TS('高さ'), OPS('÷'), NS('2')], tip: '台形は、先に（上底＋下底）を計算するからかっこが必要。さいごは ÷2！'
+  },
+  rho: {
+    name: 'ひし形', f: '対角線×対角線÷2', wrong: ['対角線×対角線', '底辺×高さ÷2', '一辺×一辺'],
+    parts: o => ['ひし形の面積 ＝ ', F(o), ' ', F(o + 1), ' ', F(o + 2), ' ', F(o + 3), ' ', F(o + 4)],
+    fields: () => [TS('対角線'), OPS('×'), TS('対角線'), OPS('÷'), NS('2')], tip: 'ひし形は、2本の対角線を使う。長方形の半分になるから ÷2。'
+  }
+};
+const formMsg = (right, w) => {
+  if (right.includes('÷2') && !w.includes('÷2')) return '最後の「÷2」を忘れていないかな？ 同じ形を2つ合わせると考えよう！';
+  if (!right.includes('÷2') && w.includes('÷2')) return '「÷2」はいらないよ。それは三角形などの公式だよ！';
+  if (right.includes('（') && !w.includes('（')) return '先に「上底＋下底」を計算するから、かっこ（　）が必要だよ！';
+  return '公式をもういちど思い出してみよう。ヒントも見てね！';
+};
+function mk1(keys, mode) {
+  const ks = shuffle(keys), tips = ks.map(k => `<div>${SHAPE[k].tip}</div>`).join('');
+  const sol = ks.map(k => `${SHAPE[k].name}の面積 ＝ <b>${SHAPE[k].f}</b>`).join('<br>');
+  if (mode === 'rev') {
+    const s = SHAPE[ks[0]];
+    return SC({ id: '', dai: 1, inst: '次の公式で面積が求められる図形の名前をえらびましょう。', parts: [`<b>${s.f}</b> で面積が求められる図形は？<br>答え：`, F(0)], fields: [SEL(s.name, SHAPE_NAMES)], hint: tips, sol });
+  }
+  const parts = [], fields = [], perm = [], units = [];
+  if (mode === 'pick') {
+    ks.forEach((k, j) => {
+      const s = SHAPE[k], msgs = {}; s.wrong.forEach(w => { msgs[w] = formMsg(s.f, w); });
+      if (j) parts.push('<br>');
+      parts.push(`${s.name}の面積 ＝ `, F(j)); fields.push(SEL(s.f, [s.f, ...s.wrong], { msgs })); units.push([j]);
+    });
+    return SC({ id: '', dai: 1, inst: '［　］にあてはまる公式をえらびましょう。', parts, fields, units, hint: tips, sol });
+  }
+  let off = 0;
+  ks.forEach(k => {
+    const s = SHAPE[k], fs = s.fields();
+    if (parts.length) parts.push('<br>');
+    parts.push(...s.parts(off)); perm.push([off, off + 2]); units.push(fs.map((_, i) => off + i)); fields.push(...fs); off += fs.length;
+  });
+  return SC({ id: '', dai: 1, inst: '［　］にあてはまることばや数をえらんで、面積を求める公式を完成させましょう。', parts, fields, perm, units, hint: tips, sol });
+}
+const pickMode = () => PK(['asm', 'asm', 'asm', 'pick', 'pick', 'rev']);
+
+/* ---- 大問2：基本4図形（式と答え） ---- */
+function mkA2a() {
+  let b, h, e, s1, s2;
+  do { b = R(3, 12); h = R(3, 12); e = R(2, 4); s1 = r1(Math.hypot(b + e, h)); s2 = r1(Math.hypot(e, h)); } while ([s1, s2].some(s => s === b || s === h || s === b * h / 2));
+  const S = b * h / 2, flip = R(0, 1) === 1;
+  const slant = `<b>ストップ！</b>斜めの辺（${nf(s2)}cm や ${nf(s1)}cm）は『高さ』ではないよ！底辺をまっすぐのばした線に『直角マーク（∟）』で交わる点線（${h}cm）が本当の高さだよ！`;
+  return SC({
+    id: '', dai: 2, inst: AINST + '<br>（三角形）', vis: { k: 'a-tri', b, h, e, s1, s2, flip },
+    parts: ['式　', F(0), ' × ', F(1), ' ÷ 2<br>答え　', F(2)], fields: [NUM(b), NUM(h), NUM(S, { unit: CM2 })], perm: [[0, 1]], units: [[0, 1, 2]],
+    diag: [
+      { f: [0, 1], v: [s1, s2], msg: slant },
+      { f: [2], v: [b * s2 / 2, s1 * h / 2, b * s2, s1 * h], msg: slant },
+      { f: [2], v: [b * h], msg: '惜しい！それは平行四辺形の面積だよ。三角形の面積は最後に『÷ 2』を忘れないでね！' }],
+    hint: '「底辺」と「高さ」は、直角マーク（∟）でつながっている2つの長さだよ。高さが三角形の外にあるときもあるよ。斜めの辺は使わない！',
+    sol: `式：${b} × ${h} ÷ 2 ＝ ${nf(S)}　答え：<b>${nf(S)} cm²</b><br>高さは、直角マーク（∟）のついた点線の ${h}cm。斜めの辺（${nf(s1)}cm、${nf(s2)}cm）は使わない！`
+  });
+}
+function mkA2b() {
+  const b = R(8, 18), h = R(4, Math.min(12, b - 3)), d = R(h + 1, b - 2), S = b * h;
+  const m1 = `<b>引っかかり注意！！</b>下の辺（${d}cm）を底辺にしたくなるけれど、直角マーク（∟）がどこについているかよく見て！高さ ${h}cm の点線は、斜めの辺（${b}cm）に垂直に交わっているね。だから底辺は ${b}cm だよ！`;
+  const m2 = `周りに書いてある2つの辺をかけても面積にはならないよ！直角マーク（∟）がついている高さ（${h}cm）を使おう！`;
+  return SC({
+    id: '', dai: 2, inst: AINST + '<br>（平行四辺形）', vis: { k: 'a-par', b, h, d },
+    parts: ['式　', F(0), ' × ', F(1), '<br>答え　', F(2)], fields: [NUM(b), NUM(h), NUM(S, { unit: CM2 })], perm: [[0, 1]], units: [[0, 1, 2]],
+    diag: [
+      { f: [0, 1], set: [b, d], msg: m2 }, { f: [0, 1], v: [d], msg: m1 },
+      { f: [2], v: [d * h], msg: m1 }, { f: [2], v: [b * d], msg: m2 },
+      { f: [2], v: [b * h / 2], msg: '平行四辺形は『÷2』はいらないよ。三角形と混ざっていないかな？' }],
+    hint: '高さの点線についている直角マーク（∟）が、どの辺にくっついているかを見よう。その辺が底辺だよ。',
+    sol: `式：${b} × ${h} ＝ ${S}　答え：<b>${S} cm²</b><br>直角マーク（∟）は斜めの ${b}cm の辺についている → 底辺 ${b}cm × 高さ ${h}cm。${d}cm の辺は使わない！`
+  });
+}
+function mkA2c() {
+  const a = R(3, 12); let b; do { b = R(3, 12); } while (b === a);
+  const h = R(3, 10), S = (a + b) * h / 2;
+  return SC({
+    id: '', dai: 2, inst: AINST + '<br>（台形）', vis: { k: 'a-trap', a, b, h },
+    parts: ['式　（ ', F(0), ' ＋ ', F(1), ' ） × ', F(2), ' ÷ 2<br>答え　', F(3)], fields: [NUM(a), NUM(b), NUM(h), NUM(S, { unit: CM2 })], perm: [[0, 1]], units: [[0, 1, 2, 3]],
+    diag: [
+      { f: [3], v: [(a + b) * h], msg: '惜しい！最後の『÷ 2』を忘れているよ。台形は（上底＋下底）×高さ÷2 だよ！' },
+      { f: [3], v: [a + b * h / 2, b + a * h / 2], msg: 'かっこ（　）を忘れていないかな？ 先に（上底＋下底）を計算してから、×高さ÷2 をするよ！' }],
+    hint: '平行な2つの辺が上底と下底。直角マーク（∟）の点線が高さ。（上底＋下底）を先に足してから、×高さ÷2。',
+    sol: `式：（${a} ＋ ${b}）× ${h} ÷ 2 ＝ ${a + b} × ${h} ÷ 2 ＝ ${nf(S)}　答え：<b>${nf(S)} cm²</b><br>上底と下底は、どちらを先に足してもOK！`
+  });
+}
+function mkA2d() {
+  const d1h = R(3, 9), d2 = R(5, 15), d1 = d1h * 2, S = d1h * d2;
+  const half = `<b>超重要ポイント！</b>${d1h}cm は端から端までではなく、真ん中までの『半分の長さ』だよ！まずは ${d1h} × 2 ＝ ${d1}cm で対角線全体の長さを出してから、『対角線×対角線÷2』を計算しよう！`;
+  return SC({
+    id: '', dai: 2, inst: AINST + '<br>（ひし形）', vis: { k: 'a-rhom', d1h, d2 },
+    parts: ['ステップ1　', F(0), ' × 2 ＝ ', F(1), '<br>ステップ2　', F(2), ' × ', F(3), ' ÷ 2 ＝ ', F(4)],
+    fields: [NUM(d1h), NUM(d1, { unit: 'cm' }), NUM(d2), NUM(d1), NUM(S, { unit: CM2 })], perm: [[2, 3]], units: [[0, 1], [2, 3, 4]],
+    diag: [{ f: [2, 3], set: [d1h, d2], msg: half }, { f: [4], v: [d1h * d2 / 2], msg: half }],
+    hint: '横の対角線は、まん中から右はしまでの「半分」しか書いていないよ。2倍して全体の長さにしてから、対角線×対角線÷2。',
+    sol: `${d1h} × 2 ＝ ${d1}（cm）<br>${d2} × ${d1} ÷ 2 ＝ ${S}　答え：<b>${S} cm²</b>`
+  });
+}
+
+/* ---- 大問3：方眼上の五角形 ---- */
+function mkA3() {
+  const W = PK([5, 6]), h1 = PK([2, 3]), h2 = PK([3, 4]), b3 = PK([3, 4, 5]), h3 = PK([2, 3, 4]), xE = R(1, W - 1);
+  const s3 = b3 * h3 / 2, s2 = W * h2 / 2, s1 = W * h1 / 2, S = s1 + s2 + s3;
+  const vis = { k: 'a-pent', W, h1, h2, b3, h3, xE };
+  return SC({
+    id: '', dai: 3, kind: 't', inst: '次の五角形の面積をくふうして求めましょう。（方眼の1めもりは 1cm）<br>赤い点線で3つの三角形に分けて考えよう。',
+    vis, hintVis: Object.assign({ hi: true }, vis),
+    parts: ['三角形ABC ＝ ', F(0), '<br>三角形ACD ＝ ', F(1), '<br>三角形ADE ＝ ', F(2), '<br>五角形ABCDE ＝ ', F(3)],
+    fields: [NUM(s3, { unit: CM2 }), NUM(s2, { unit: CM2 }), NUM(s1, { unit: CM2 }), NUM(S, { unit: CM2 })], units: [[0, 1, 2, 3]],
+    hint: `A から C と D に点線を引くと、3つの三角形に分けられるよ。ADの長さは ${W}cm。ADを底辺にすると、ACD の高さは ${h2}cm、ADE の高さは ${h1}cm。ABC は AB（${b3}cm）を底辺にして、高さは横の ${h3}cm。さいごに3つをたそう！`,
+    sol: `ABC：${b3} × ${h3} ÷ 2 ＝ ${nf(s3)}<br>ACD：${W} × ${h2} ÷ 2 ＝ ${nf(s2)}<br>ADE：${W} × ${h1} ÷ 2 ＝ ${nf(s1)}<br>${nf(s3)} ＋ ${nf(s2)} ＋ ${nf(s1)} ＝ <b>${nf(S)} cm²</b>`
+  });
+}
+
+/* ---- 大問4：底辺と面積（比例） ---- */
+function mkA4() {
+  const H = R(4, 12), top = ['底辺（cm）', 1, 2, 3, 4, 5, 6, 7], bot = ['面積（cm²）', H];
+  for (let i = 0; i < 6; i++) bot.push(F(i));
+  return SC({
+    id: '', dai: 4, inst: `平行四辺形の高さを ${H} cm にきめて、底辺を 1cm、2cm、3cm、……と変えていきます。<br>① 下の表にあてはまる数をかきましょう。`,
+    vis: { k: 'a-par3', H },
+    parts: [{ tbl: [top, bot] }, '② 底辺が2倍、3倍、……になると、面積は ', F(6), ' 倍、', F(7), ' 倍、……になります。<br>③ ②のことから、面積は底辺に（ ', F(8), ' ）しているといえます。'],
+    fields: [2, 3, 4, 5, 6, 7].map(x => NUM(H * x)).concat([NUM(2), NUM(3), SEL('比例', ['比例', '反比例', '合同', '等しい'], { msgs: { 反比例: '反比例は「一方が2倍になると、もう一方は半分になる」関係だよ。今回は面積も2倍になっているね。' } })]),
+    units: [[0, 1, 2, 3, 4, 5], [6, 7], [8]],
+    hint: `面積 ＝ 底辺 × 高さ。高さは ${H}cm で変わらないから、底辺が1cm ふえるごとに面積は ${H}cm² ずつふえるよ。`,
+    sol: `面積 ＝ 底辺 × ${H}：${[2, 3, 4, 5, 6, 7].map(x => `${x}×${H}＝${x * H}`).join('、')}<br>底辺が2倍、3倍、……になると、面積も2倍、3倍、……になる → 面積は底辺に<b>比例</b>している。`
+  });
+}
+
+/* ---- 大問5：色をぬった部分 ---- */
+function mkA5a() {
+  const H = R(5, 10), W = R(6, 12), brem = R(2, W - 2), hrem = R(2, H - 2), w1 = W - brem, h2 = H - hrem;
+  const rect = H * W, t1 = w1 * H / 2, t2 = W * h2 / 2, S = rect - t1 - t2;
+  return SC({
+    id: '', dai: 5, kind: 't', inst: '下の図で、色をぬった部分の面積を求めましょう。<br>（全体の長方形から、白い三角形2つをひいて考えよう）', vis: { k: 'a-cut1', H, W, brem, hrem },
+    parts: ['考え方　全体の長方形 ', F(0), ' － （ 白い三角形 ', F(1), ' ＋ ', F(2), ' ）<br>答え　', F(3)],
+    fields: [NUM(rect, { unit: CM2 }), NUM(t1, { unit: CM2 }), NUM(t2, { unit: CM2 }), NUM(S, { unit: CM2 })], perm: [[1, 2]], units: [[0, 1, 2, 3]],
+    hint: `全体は 縦${H}cm × 横${W}cm の長方形。左の白い三角形は、底辺が ${W}－${brem}＝${w1}cm、高さ${H}cm。上の白い三角形は、底辺${W}cm、高さが ${H}－${hrem}＝${h2}cm。`,
+    sol: `${H} × ${W} ＝ ${rect}<br>${w1} × ${H} ÷ 2 ＝ ${nf(t1)}　${h2} × ${W} ÷ 2 ＝ ${nf(t2)}<br>${rect} － （${nf(t1)} ＋ ${nf(t2)}） ＝ <b>${nf(S)} cm²</b>`
+  });
+}
+function mkA5b() {
+  const B = 2 * R(3, 8), H1 = R(6, 14), H2 = R(2, H1 - 2), pf = PK([0.35, 0.5, 0.65]);
+  const all = B * H1 / 2, wh = B * H2 / 2, S = all - wh;
+  return SC({
+    id: '', dai: 5, kind: 't', inst: '下の図で、色をぬった部分の面積を求めましょう。<br>（大きい三角形から、中の白い三角形をひいて考えよう）', vis: { k: 'a-cut2', B, H1, H2, pf },
+    parts: ['考え方　全体の三角形 ', F(0), ' － 白い三角形 ', F(1), '<br>答え　', F(2)],
+    fields: [NUM(all, { unit: CM2 }), NUM(wh, { unit: CM2 }), NUM(S, { unit: CM2 })], units: [[0, 1, 2]],
+    hint: `大きい三角形は 底辺${B}cm・高さ${H1}cm。中の白い三角形は 同じ底辺${B}cm・高さ${H2}cm。どちらも底辺が同じだよ。`,
+    sol: `${B} × ${H1} ÷ 2 ＝ ${all}<br>${B} × ${H2} ÷ 2 ＝ ${wh}<br>${all} － ${wh} ＝ <b>${S} cm²</b>`
+  });
+}
+
+/* ---- 大問6：平行な2直線にはさまれた三角形 ---- */
+function mkA6() {
+  const H = R(4, 10), bs = shuffle([2, 3, 4, 5, 6, 7, 8, 9]).slice(0, 3), names = ['あ', 'い', 'う'];
+  const ans = names.map((n, i) => [n, bs[i]]).sort((x, y) => y[1] - x[1]).map(x => x[0]);
+  const KANA = ['あ', 'い', 'う'], WORDS = ['高さ', '底辺', '面積', '斜めの辺'];
+  const diag = [{ eq: { 0: ans[2], 1: ans[1], 2: ans[0] }, msg: '順番が逆（小さい順）になっているよ！『面積が【大きい順】』にならべよう！' }];
+  if (ans[0] !== 'う') diag.push({ eq: { 0: 'う' }, msg: `斜めの線の長さにだまされないで！平行な2本の直線にはさまれているから、3つとも『高さ』は同じ ${H}cm だよ。底辺の数字を比べてみよう！` });
+  diag.push({ eq: { 3: '底辺' }, msg: '3つの三角形でおなじなのは『高さ』だよ。ちがっているのが『底辺』。' });
+  return SC({
+    id: '', dai: 6, kind: 't', inst: '次のような平行な2本の直線にはさまれた三角形があります。面積が大きい順にならべましょう。なぜそのようにならべたか、理由を書きましょう。',
+    vis: { k: 'a-tri3', H, b: bs },
+    parts: ['① （大　', F(0), ' → ', F(1), ' → ', F(2), '　小）<br>② 3つとも三角形の ', F(3), ' は ', F(4), ' cm で等しい。したがって、', F(5), ' の長さの大きい順に並べると、面積の大きい順になる。'],
+    fields: [SEL(ans[0], KANA, { keep: true }), SEL(ans[1], KANA, { keep: true }), SEL(ans[2], KANA, { keep: true }), SEL('高さ', WORDS), NUM(H), SEL('底辺', WORDS)], units: [[0, 1, 2], [3, 4, 5]], diag,
+    hint: '2本の平行線のあいだの長さ（高さ）は、どの三角形でも同じ。高さが同じなら、面積は底辺が長いほど大きくなるよ。',
+    sol: `面積 ＝ 底辺 × ${H} ÷ 2：${names.map((n, i) => `${n} ${nf(bs[i] * H / 2)}cm²`).join('、')}<br>大きい順：<b>${ans.join(' → ')}</b><br>理由：3つとも三角形の高さは ${H}cm で等しい。したがって、底辺の長さの大きい順に並べると、面積の大きい順になる。`
+  });
+}
+
+/* ---- 全11画面を1巡のシャッフル・デッキで出す（1巡すれば8ページ目の全パターンを一通り解ける） ---- */
+const GENA = { '1a': () => mk1(['tri', 'par'], pickMode()), '1b': () => mk1(['tra', 'rho'], pickMode()), '2a': mkA2a, '2b': mkA2b, '2c': mkA2c, '2d': mkA2d, '3': mkA3, '4': mkA4, '5a': mkA5a, '5b': mkA5b, '6': mkA6 };
+const AREA_KEYS = Object.keys(GENA);
+let aDeck = [], aLast = '';
+function genArea(key) {
+  const g = clone(GENA[key]());
+  g.id = 'a' + key + '-' + hash(JSON.stringify([g.parts, g.fields.map(f => f.ans), g.vis || 0]));
+  return g;
+}
+function nextArea() {
+  if (!aDeck.length) { aDeck = shuffle(AREA_KEYS); if (aDeck[aDeck.length - 1] === aLast) aDeck.unshift(aDeck.pop()); }
+  aLast = aDeck.pop();
+  return genArea(aLast);
+}
+
+/* =====================================================================
    図（SVG／HTML）
    ===================================================================== */
 const COLS = ['#5cc8ff', '#ffb35c', '#8be28b', '#ff8fb3', '#c3a0ff', '#ffe066'];
@@ -445,8 +671,115 @@ function tapeSVG(v) {
     <text x="4" y="78" class="svt big">${v.vName}</text><rect x="70" y="62" width="${W * r}" height="24" fill="#ff6a6a" stroke="#523"/><text x="${70 + W * r / 2}" y="79" text-anchor="middle" class="svt big w">${v.vl}</text>
     <text x="70" y="115" class="svt big">${v.vName}は ${v.bName}の □ 倍？</text></svg>`;
 }
+/* ---- 面積の図（直角マーク＝赤、高さ＝赤い点線） ---- */
+const pf1 = n => (+n).toFixed(1);
+const arL = (x1, y1, x2, y2, c) => `<line x1="${pf1(x1)}" y1="${pf1(y1)}" x2="${pf1(x2)}" y2="${pf1(y2)}" class="${c || 'ar-s'}"/>`;
+const arPoly = (pts, c, st) => `<polygon points="${pts.map(p => pf1(p[0]) + ',' + pf1(p[1])).join(' ')}" class="${c || 'ar-shape'}"${st ? ` style="${st}"` : ''}/>`;
+const arT = (x, y, t, a) => `<text x="${pf1(x)}" y="${pf1(y)}" text-anchor="${a || 'middle'}" class="ar-t">${t}</text>`;
+/** 直角マーク：(x,y) の角から、方向 u と v（画面の向き）に小さな四角をかく */
+function arRA(x, y, ux, uy, vx, vy, s) {
+  s = s || 10;
+  const p = [[x + ux * s, y + uy * s], [x + (ux + vx) * s, y + (uy + vy) * s], [x + vx * s, y + vy * s]];
+  return `<polyline points="${p.map(q => pf1(q[0]) + ',' + pf1(q[1])).join(' ')}" class="ar-ra"/>`;
+}
+const arSvg = (w, h, body, label) => `<svg viewBox="0 0 ${pf1(w)} ${pf1(h)}" class="viz area" role="img" aria-label="${label}">${body}</svg>`;
+
+function aTri(p) { // 大問2① 高さが外側にある三角形
+  const { b, h, e, s1, s2, flip } = p, W = b + e, k = Math.min(330 / W, 140 / h), x0 = 50, y0 = 185, sg = flip ? -1 : 1;
+  const X = x => x0 + (flip ? W - x : x) * k, Y = y => y0 - y * k;
+  const A = [X(0), Y(0)], Bq = [X(b), Y(0)], C = [X(W), Y(h)], Fq = [X(W), Y(0)];
+  let s = arL(Bq[0], y0, Fq[0], y0, 'ar-d') + arPoly([A, Bq, C]) + arL(C[0], C[1], Fq[0], Fq[1], 'ar-h') + arRA(Fq[0], Fq[1], -sg, 0, 0, -1);
+  s += arT((A[0] + Bq[0]) / 2, y0 + 22, nf(b) + ' cm');
+  s += arT((A[0] + C[0]) / 2 - sg * 8, (A[1] + C[1]) / 2 - 10, nf(s1) + ' cm');
+  s += arT((Bq[0] + C[0]) / 2 - sg * 8, (Bq[1] + C[1]) / 2 + 4, nf(s2) + ' cm', flip ? 'start' : 'end'); // 高さの点線と重ならないよう三角形の内側がわに置く
+  s += arT(Fq[0] + sg * 8, y0 - h * k * 0.18, nf(h) + ' cm', flip ? 'end' : 'start');
+  return arSvg(460, 225, s, '底辺と高さが外にある三角形');
+}
+function aPar(p) { // 大問2② 斜めの辺が底辺の平行四辺形
+  const { b, h, d } = p, y = h * b / d, dx = Math.sqrt(b * b - y * y), W = d + dx, k = Math.min(300 / W, 150 / y), x0 = 80, y0 = 185;
+  const X = x => x0 + x * k, Y = v => y0 - v * k, P = q => [X(q[0]), Y(q[1])];
+  const t = d * dx / b, F = [dx * t / b, y * t / b], ux = dx / b, uy = y / b, fx = d - F[0], fy = -F[1], fl = Math.hypot(fx, fy) || 1;
+  let s = arPoly([[0, 0], [d, 0], [d + dx, y], [dx, y]].map(P));
+  s += arL(X(d), Y(0), X(F[0]), Y(F[1]), 'ar-h') + arRA(X(F[0]), Y(F[1]), ux, -uy, fx / fl, -fy / fl);
+  s += arT(X(d / 2), Y(0) + 22, nf(d) + ' cm');
+  s += arT(X(dx / 2) - 12, Y(y / 2) + 5, nf(b) + ' cm', 'end');
+  s += arT((X(d) + X(F[0])) / 2 + 4, (Y(0) + Y(F[1])) / 2 - 8, nf(h) + ' cm');
+  return arSvg(430, 220, s, '斜めの辺が底辺の平行四辺形');
+}
+function aTrap(p) { // 大問2③ 台形
+  const { a, b, h } = p, m = Math.max(a, b), k = Math.min(320 / m, 150 / h), cx = 215, yt = 34, yb = yt + h * k;
+  let s = arPoly([[cx - a * k / 2, yt], [cx + a * k / 2, yt], [cx + b * k / 2, yb], [cx - b * k / 2, yb]]);
+  s += arL(cx, yt, cx, yb, 'ar-h') + arRA(cx, yb, 1, 0, 0, -1);
+  s += arT(cx, yt - 10, nf(a) + ' cm') + arT(cx, yb + 24, nf(b) + ' cm') + arT(cx + 8, (yt + yb) / 2 + 5, nf(h) + ' cm', 'start');
+  return arSvg(430, yb + 40, s, '台形');
+}
+function aRhom(p) { // 大問2④ ひし形（横の対角線は半分だけ書いてある）
+  const { d1h, d2 } = p, k = Math.min(150 / d1h, 100 / (d2 / 2), 30), hw = d1h * k, hh = d2 / 2 * k, cx = hw + 30, cy = hh + 22, bx = cx + hw + 34, by = cy + hh + 22;
+  let s = arPoly([[cx - hw, cy], [cx, cy - hh], [cx + hw, cy], [cx, cy + hh]]);
+  s += arL(cx - hw, cy, cx, cy, 'ar-h') + arL(cx, cy - hh, cx, cy + hh, 'ar-h') + arRA(cx, cy, 1, 0, 0, -1);
+  s += arL(cx, cy + hh, cx, by, 'ar-d') + arL(cx + hw, cy, cx + hw, by, 'ar-d') + arL(cx, by, cx + hw, by, 'ar-dim') + arL(cx, by - 6, cx, by + 6) + arL(cx + hw, by - 6, cx + hw, by + 6);
+  s += arT(cx + hw / 2, by + 22, nf(d1h) + ' cm');
+  s += arL(cx, cy - hh, bx, cy - hh, 'ar-d') + arL(cx, cy + hh, bx, cy + hh, 'ar-d') + arL(bx, cy - hh, bx, cy + hh, 'ar-dim') + arL(bx - 6, cy - hh, bx + 6, cy - hh) + arL(bx - 6, cy + hh, bx + 6, cy + hh);
+  s += arT(bx + 10, cy + 5, nf(d2) + ' cm', 'start');
+  return arSvg(bx + 80, by + 34, s, 'ひし形');
+}
+function aPent(p) { // 大問3 方眼上の五角形
+  const { W, h1, h2, b3, h3, xE } = p, yA = Math.max(h2, b3), rows = yA + h1, cs = Math.min(40, 300 / W, 270 / rows), ox = 36, oy = 24;
+  const X = x => ox + x * cs, Y = y => oy + (rows - y) * cs, P = q => [X(q[0]), Y(q[1])];
+  const A = [0, yA], B = [0, yA - b3], C = [h3, yA - h2], D = [W, yA], E = [xE, yA + h1];
+  let s = '';
+  for (let i = 0; i <= W; i++) s += arL(X(i), Y(0), X(i), Y(rows), 'ar-grid');
+  for (let j = 0; j <= rows; j++) s += arL(X(0), Y(j), X(W), Y(j), 'ar-grid');
+  if (p.hi) s += arPoly([A, B, C].map(P), 'ar-t1') + arPoly([A, C, D].map(P), 'ar-t2') + arPoly([A, D, E].map(P), 'ar-t3');
+  s += arPoly([A, B, C, D, E].map(P), 'ar-pent');
+  s += arL(X(A[0]), Y(A[1]), X(D[0]), Y(D[1]), 'ar-h') + arL(X(A[0]), Y(A[1]), X(C[0]), Y(C[1]), 'ar-h');
+  if (p.hi) s += arL(X(xE), Y(E[1]), X(xE), Y(yA), 'ar-d') + arL(X(C[0]), Y(C[1]), X(C[0]), Y(yA), 'ar-d') + arL(X(C[0]), Y(C[1]), X(0), Y(C[1]), 'ar-d');
+  [['A', A, -16, 5], ['B', B, -16, 16], ['C', C, 0, 20], ['D', D, 16, 5], ['E', E, 0, -9]].forEach(([n, q, dx, dy]) => { s += arT(X(q[0]) + dx, Y(q[1]) + dy, n); });
+  const lx = X(W) + 26;
+  s += `<rect x="${pf1(lx)}" y="${pf1(oy)}" width="${pf1(cs)}" height="${pf1(cs)}" class="ar-unit"/>` + arT(lx + cs / 2, oy + cs + 18, '1cm');
+  return arSvg(lx + cs + 30, oy + rows * cs + 34, s, '方眼の上の五角形');
+}
+function aPar3(p) { // 大問4 底辺が1cm,2cm,3cmの平行四辺形
+  const hh = 80, off = 22, yb = 105, yt = yb - hh, kb = 24; let x = 56, s = '';
+  [1, 2, 3].forEach(n => { const w = n * kb; s += arPoly([[x, yb], [x + w, yb], [x + w + off, yt], [x + off, yt]]) + arT(x + w / 2, yb + 22, n + ' cm'); x += w + off + 36; });
+  s += arL(56 + off, yt, 56 + off, yb, 'ar-h') + arRA(56 + off, yb, 1, 0, 0, -1, 8) + arT(56 + off - 6, (yt + yb) / 2 + 5, p.H + ' cm', 'end') + arT(x - 4, yb - 28, '……');
+  return arSvg(x + 40, 140, s, '底辺をかえる平行四辺形');
+}
+function aCut1(p) { // 大問5① 長方形から白い三角形2つ
+  const { H, W, brem, hrem } = p, w1 = W - brem, k = Math.min(310 / W, 190 / H), ox = 64, oy = 36, X = x => ox + x * k, Y = y => oy + (H - y) * k, P = q => [X(q[0]), Y(q[1])];
+  let s = arPoly([[0, H], [0, 0], [w1, 0]].map(P), 'ar-white') + arPoly([[0, H], [W, H], [W, hrem]].map(P), 'ar-white') + arPoly([[0, H], [w1, 0], [W, 0], [W, hrem]].map(P), 'ar-col');
+  s += arRA(X(0), Y(0), 1, 0, 0, -1) + arRA(X(0), Y(H), 1, 0, 0, 1) + arRA(X(W), Y(H), -1, 0, 0, 1);
+  s += arT(ox - 8, (Y(0) + Y(H)) / 2 + 5, nf(H) + ' cm', 'end') + arT((X(0) + X(W)) / 2, oy - 10, nf(W) + ' cm') + arT((X(w1) + X(W)) / 2, Y(0) + 22, nf(brem) + ' cm') + arT(X(W) + 8, (Y(0) + Y(hrem)) / 2 + 5, nf(hrem) + ' cm', 'start');
+  return arSvg(ox + W * k + 86, oy + H * k + 34, s, '色をぬった部分（長方形から三角形をひく）');
+}
+function aCut2(p) { // 大問5② 大きい三角形から白い三角形をひく
+  const { B, H1, H2, pf } = p, k = Math.min(330 / B, 150 / H1), ox = 74, oy = 28, px = B * pf, X = x => ox + x * k, Y = y => oy + (H1 - y) * k, P = q => [X(q[0]), Y(q[1])];
+  let s = `<rect x="${pf1(X(0))}" y="${pf1(Y(H1))}" width="${pf1(B * k)}" height="${pf1(H1 * k)}" class="ar-d"/>` + arPoly([[0, 0], [px, H1], [B, 0], [px, H2]].map(P), 'ar-col');
+  s += arL(X(px), Y(0), X(px), Y(H1), 'ar-h') + arRA(X(px), Y(0), 1, 0, 0, -1);
+  s += arT((X(0) + X(B)) / 2, Y(0) + 22, nf(B) + ' cm');
+  s += arL(X(0) - 24, Y(0), X(0) - 24, Y(H1), 'ar-dim') + arL(X(0) - 30, Y(0), X(0) - 18, Y(0)) + arL(X(0) - 30, Y(H1), X(0) - 18, Y(H1)) + arT(X(0) - 32, (Y(0) + Y(H1)) / 2 + 5, nf(H1) + ' cm', 'end');
+  s += arT(X(px) + 8, (Y(0) + Y(H2)) / 2 + 5, nf(H2) + ' cm', 'start');
+  return arSvg(ox + B * k + 40, oy + H1 * k + 34, s, '色をぬった部分（大きい三角形から三角形をひく）');
+}
+function aTri3(p) { // 大問6 平行な2直線にはさまれた3つの三角形
+  const { H, b } = p, tot = b[0] + b[1] + b[2] + 6 + 1.5, k = Math.min(24, 380 / tot), ky = Math.min(22, 150 / H), top = 26, bot = top + H * ky, gap = 2 * k;
+  const defs = [[0.35, '#fde68a'], [0.6, '#bbf7d0'], [1 + 1.5 / b[2], '#bfdbfe']], names = ['あ', 'い', 'う'];
+  let x = 18, s = '';
+  b.forEach((w, i) => {
+    const bw = w * k, ax = x + bw * defs[i][0], pts = [[x, bot], [x + bw, bot], [ax, top]];
+    s += arPoly(pts, 'ar-shape', `fill:${defs[i][1]}`);
+    s += arT((x + x + bw + ax) / 3, bot - H * ky / 3 + 6, names[i]) + arT(x + bw / 2, bot + 22, w + ' cm');
+    x += bw + gap;
+  });
+  const xr = x + 1.5 * k + 18;
+  s = arL(6, top, xr + 14, top) + arL(6, bot, xr + 14, bot) + s + arL(xr, top, xr, bot, 'ar-h') + arRA(xr, bot, -1, 0, 0, -1) + arT(xr + 8, (top + bot) / 2 + 5, H + ' cm', 'start');
+  return arSvg(xr + 70, bot + 34, s, '平行な2直線にはさまれた3つの三角形');
+}
+
 function visHTML(v) {
   switch (v.k) {
+    case 'a-tri': return aTri(v); case 'a-par': return aPar(v); case 'a-trap': return aTrap(v); case 'a-rhom': return aRhom(v);
+    case 'a-pent': return aPent(v); case 'a-par3': return aPar3(v); case 'a-cut1': return aCut1(v); case 'a-cut2': return aCut2(v); case 'a-tri3': return aTri3(v);
     case 'numline': return `<div class="nlwrap">${numLineSVG()}</div>`;
     case 'cake': return `<div class="cakeline">🍰×${v.n} ＝ ${v.n}こ　👧×${v.d}人でわける</div>` + barsSVG([[v.n, v.d]], `${v.d}等分のうち${v.n}こ分`);
     case 'golem': return `<div class="golem"><div class="golem-face">🗿</div><div class="armor">装甲値 ${fh(v.n, v.d)}</div></div>`;
@@ -460,7 +793,8 @@ function visHTML(v) {
 }
 let B = null;
 const PRAISE = ['すごい！ばっちり！', 'せいかい！その調子！', 'ナイス魔導！', 'かんぺき！', 'いいね、その計算！'];
-const SLOTS = f => f.t === 'frac' ? (f.vm.mixed ? ['w', 'n', 'd'] : ['n', 'd']) : ['v'];
+const NUMT = ['int', 'dec', 'num', 'frac'], DOTT = ['dec', 'num'];
+const SLOTS = f =>f.t === 'frac' ? (f.vm.mixed ? ['w', 'n', 'd'] : ['n', 'd']) : ['v'];
 
 function firstSlot() { for (let i = 0; i < B.scr.fields.length; i++) { return { i, s: SLOTS(B.scr.fields[i])[0] }; } return null; }
 
@@ -470,6 +804,11 @@ function partNode(p) {
   if (p.fr) {
     const fr = el('span', 'frac'), cell = (x, c) => { const e = el('span', c); if (typeof x === 'object') e.append(fieldNode(x.f)); else e.textContent = x; return e; };
     fr.append(cell(p.fr[0], 'num'), el('span', 'bar'), cell(p.fr[1], 'den')); return fr;
+  }
+  if (p.tbl) { // 表（大問4）
+    const wrap = el('div', 'tblwrap'), t = el('table', 'ptbl');
+    p.tbl.forEach(r => { const tr = el('tr'); r.forEach((c, ci) => { const td = el(ci === 0 ? 'th' : 'td'); if (c && c.f != null) td.append(fieldNode(c.f)); else td.textContent = c; tr.append(td); }); t.append(tr); });
+    wrap.append(t); return wrap;
   }
   return document.createTextNode('');
 }
@@ -497,15 +836,15 @@ function refreshAll() {
     sl.textContent = v[s];
     sl.classList.toggle('empty', v[s] === '');
     sl.classList.toggle('active', !!B.act && B.act.i === i && B.act.s === s);
-    if (f.t === 'cmp' || f.t === 'pick' || f.t === 'word') sl.classList.add('wide');
+    if (f.t === 'cmp' || f.t === 'pick' || f.t === 'word' || f.t === 'sel') sl.classList.add('wide');
     if (s === 'w') sl.hidden = !f.vm.mixed;
   });
   $$('#stem .mxtog').forEach(b => { const f = B.scr.fields[+b.dataset.i]; b.textContent = f.vm.mixed ? '帯分数で答える' : '仮分数で答える'; b.classList.toggle('on', f.vm.mixed); });
   $$('#stem .wtext').forEach(inp => { inp.classList.toggle('active', !!B.act && B.act.i === +inp.dataset.i); });
   $$('#vis .mk').forEach(m => m.classList.toggle('sel', B.scr.fields.some((f, i) => f.t === 'pick' && B.vals[i].v === m.dataset.k)));
   const a = B.act, f = a && B.scr.fields[a.i];
-  $('#pad').classList.toggle('nonum', !f || !['int', 'dec', 'frac'].includes(f.t));
-  $('#pad').classList.toggle('nodot', !f || f.t !== 'dec');
+  $('#pad').classList.toggle('nonum', !f || !NUMT.includes(f.t));
+  $('#pad').classList.toggle('nodot', !f || !DOTT.includes(f.t)); // 面積の「num」は、整数か小数かをさとられないよう常に「.」が使える
 }
 function setActive(i, s) { B.act = { i, s }; refreshAll(); renderChoices(); }
 function allSlots() { const a = []; B.scr.fields.forEach((f, i) => { if (f.t === 'word' && save.manual) return; SLOTS(f).forEach(s => a.push({ i, s })); }); return a; }
@@ -524,6 +863,7 @@ function renderChoices() {
   const a = B && B.act; if (!a) { box.hidden = true; return; }
   const f = B.scr.fields[a.i], mkChip = (txt, fn, cls) => { const b = el('button', 'chip ' + (cls || ''), txt); b.type = 'button'; b.onclick = () => { SFX.click(); fn(); }; box.append(b); };
   if (f.t === 'word' && !save.manual) B.opts[a.i].forEach(w => mkChip(w, () => { B.vals[a.i].v = w; clearMarks(); refreshAll(); if (allSlots().some(slotEmpty)) advance(); }));
+  else if (f.t === 'sel') B.opts[a.i].forEach(w => mkChip(w, () => { B.vals[a.i].v = w; clearMarks(); refreshAll(); if (allSlots().some(slotEmpty)) advance(); }, w.length <= 3 ? 'big' : ''));
   else if (f.t === 'cmp') ['>', '=', '<'].forEach(c => mkChip(c, () => { B.vals[a.i].v = c; clearMarks(); refreshAll(); if (allSlots().some(slotEmpty)) advance(); }, 'big'));
   else if (f.t === 'pick') Object.keys(MK).forEach(k => mkChip(k, () => { B.vals[a.i].v = k; clearMarks(); refreshAll(); }, 'big'));
   box.hidden = !box.children.length;
@@ -544,12 +884,12 @@ function pressKey(k) {
   const a = B.act; if (!a && k !== 'swap') return;
   if (k === 'swap') return advance();
   const f = B.scr.fields[a.i], v = B.vals[a.i];
-  if (!['int', 'dec', 'frac'].includes(f.t)) { if (k === 'bs' || k === 'clr') { v.v = ''; refreshAll(); } return; }
+  if (!NUMT.includes(f.t)) { if (k === 'bs' || k === 'clr') { v.v = ''; refreshAll(); } return; }
   SFX.click(); clearMarks();
   if (k === 'clr') { if (f.t === 'frac') { v.w = v.n = v.d = ''; } else v.v = ''; setActive(a.i, a.s); return; }
   if (k === 'bs') { v[a.s] = v[a.s].slice(0, -1); refreshAll(); return; }
-  let cur = v[a.s]; const max = f.t === 'dec' ? 6 : a.s === 'w' ? 2 : 4;
-  if (k === '.') { if (f.t !== 'dec' || cur.includes('.')) return; cur = cur === '' ? '0.' : cur + '.'; }
+  let cur = v[a.s]; const max = DOTT.includes(f.t) ? 6 : a.s === 'w' ? 2 : 4;
+  if (k === '.') { if (!DOTT.includes(f.t) || cur.includes('.')) return; cur = cur === '' ? '0.' : cur + '.'; }
   else { if (cur === '0') cur = ''; if (cur.length >= max) return; cur += k; }
   v[a.s] = cur; refreshAll();
 }
@@ -577,6 +917,16 @@ function gradeField(f, v) {
       if (v.v === '') return { ok: false, empty: true };
       return Math.abs(parseFloat(v.v) - f.ans) < 1e-9 ? { ok: true } : { ok: false, msg: 'わり算をさいごまで計算できているかな？ 分子 ÷ 分母 の順番も確かめよう！' };
     }
+    case 'num': {
+      if (v.v === '') return { ok: false, empty: true };
+      const x = parseFloat(v.v);
+      return Math.abs(x - f.ans) < 1e-9 ? { ok: true } : { ok: false, msg: '' };
+    }
+    case 'sel': {
+      if (v.v === '') return { ok: false, empty: true };
+      if ([].concat(f.ans).includes(v.v)) return { ok: true };
+      return { ok: false, msg: (f.msgs && f.msgs[v.v]) || '' };
+    }
     case 'cmp': return v.v === '' ? { ok: false, empty: true } : (v.v === f.ans ? { ok: true } : { ok: false });
     case 'pick': {
       if (v.v === '') return { ok: false, empty: true };
@@ -601,6 +951,13 @@ function gradeField(f, v) {
   }
   return { ok: false };
 }
+const nzv = x => (x !== '' && x != null && !isNaN(+x)) ? String(+x) : String(x);
+const sameV = (a, b) => { if (a === '' || a == null) return false; const x = +a, y = +b; return (!isNaN(x) && !isNaN(y)) ? Math.abs(x - y) < 1e-9 : String(a) === String(b); };
+function diagHit(d, vals) {
+  if (d.set) return d.f.map(i => nzv(vals[i].v)).sort().join('|') === d.set.map(nzv).sort().join('|');
+  if (d.eq) return Object.keys(d.eq).every(i => sameV(vals[i].v, d.eq[i]));
+  return d.f.some(i => d.v.some(x => sameV(vals[i].v, x)));
+}
 function gradeScreen(scr, vals) {
   const fr = scr.fields.map((f, i) => gradeField(f, vals[i]));
   if (scr.joint === 'cden' && fr[0].ok && fr[1].ok && +vals[0].d !== +vals[1].d) {
@@ -611,8 +968,14 @@ function gradeScreen(scr, vals) {
     if (!fr[a].ok && !fr[b].ok && vals[a].v === String(scr.fields[b].ans) && vals[b].v === String(scr.fields[a].ans))
       fr[a].msg = fr[b].msg = '<b>分子と分母が逆になっているよ！</b>『上の数（分子）÷ 下の数（分母）』の順番を思い出そう！';
   }
+  // 入れかえてもよい欄（かけ算・たし算の順番など）：中身が同じ組み合わせなら正解
+  (scr.perm || []).forEach(g => {
+    const exp = g.map(i => nzv(scr.fields[i].ans)).sort().join('|'), got = g.map(i => nzv(vals[i].v)).sort().join('|');
+    if (got === exp) g.forEach(i => { fr[i] = { ok: true }; });
+  });
   const unitOk = scr.units.map(u => u.every(i => fr[i].ok));
   const msgs = [...new Set(fr.filter(r => !r.ok && r.msg).map(r => r.msg))];
+  if (!unitOk.every(Boolean)) { const d = (scr.diag || []).find(d => diagHit(d, vals)); if (d && !msgs.includes(d.msg)) msgs.unshift(d.msg); } // ひっかけミスの専用メッセージ
   return {
     fr, unitOk, msgs, all: unitOk.every(Boolean),
     empty: fr.some(r => r.empty), hard: fr.some(r => !r.ok && !r.soft && !r.empty)
@@ -652,20 +1015,26 @@ window.addEventListener('resize', fitPad);
 function status() {
   const m = mcState(), txt = `🧱 ${m.blocks}こ　⏱ ${mmss(m.sec)}`;
   $$('.mc-status').forEach(e => { e.textContent = txt; });
-  $('#qCount').textContent = `✔ ${save.total}もん`;
-  $('#qWrong').textContent = save.wrong.length ? `ふくしゅう ${save.wrong.length}` : '';
+  $('#qCount').textContent = `✔ ${save['total' + UNIT_CAP[save.unit]]}もん`;
+  $('#qWrong').textContent = wList().length ? `ふくしゅう ${wList().length}` : '';
+  $('#qUnit').textContent = UNIT_BADGE[save.unit];
+  $$('.unit-tab').forEach(b => { const on = b.dataset.unit === save.unit; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
   $('#tSound').textContent = save.sound ? '🔊' : '🔇';
   $('#sNote').textContent = m.sec > 0 ? 'ためた時間で あそべるよ！' : 'まず もんだいを解いて、あそぶ時間をためよう！';
 }
 
 /** 次の問題：ふだんはランダム。まちがえた問題は、少し間をあけてまた出す。 */
 let lastId = '', since = 0;
+const UNIT_BADGE = { area: '📐 面積', frac: '🍕 分数' };
+const wKey = () => 'wrong' + UNIT_CAP[save.unit];
+const wList = () => save[wKey()];
 function pickScreen() {
-  const pool = save.wrong.filter(w => w.id !== lastId);
+  const pool = wList().filter(w => w.id !== lastId);
   let scr = null, review = false;
   if (pool.length && (since >= 3 || Math.random() < 0.25)) { scr = clone(PK(pool)); review = true; since = 0; }
   else {
-    for (let i = 0; i < 30 && !scr; i++) { const g = genScreen(R(1, 9)); if (g.id !== lastId) scr = g; }
+    if (save.unit === 'area') scr = nextArea(); // 11画面を1巡するシャッフル・デッキ
+    else for (let i = 0; i < 30 && !scr; i++) { const g = genScreen(R(1, 9)); if (g.id !== lastId) scr = g; }
     since++;
   }
   lastId = scr.id;
@@ -673,7 +1042,7 @@ function pickScreen() {
 }
 function addWrong(scr) {
   const c = clone(scr); c.fields.forEach(f => { delete f.vm; });
-  save.wrong = save.wrong.filter(w => w.id !== c.id); save.wrong.unshift(c); save.wrong = save.wrong.slice(0, 50);
+  const k = wKey(); save[k] = save[k].filter(w => w.id !== c.id); save[k].unshift(c); save[k] = save[k].slice(0, 50);
   persist();
 }
 
@@ -681,7 +1050,7 @@ function loadScreen() {
   const { scr, review } = pickScreen();
   B = { scr, review, fails: 0, missU: new Set(), locked: false, noted: false, opts: {}, act: null };
   B.vals = scr.fields.map(f => { f.vm = { mixed: false }; return { w: '', n: '', d: '', v: '' }; });
-  scr.fields.forEach((f, i) => { if (f.t === 'word') B.opts[i] = shuffle(f.opts); });
+  scr.fields.forEach((f, i) => { if (f.t === 'word' || f.t === 'sel') B.opts[i] = f.keep ? f.opts : shuffle(f.opts); });
   $('#badge').hidden = !review;
   $('#inst').innerHTML = scr.inst || '';
   const stem = $('#stem'); stem.innerHTML = '';
@@ -705,8 +1074,8 @@ function onSubmit() {
 }
 function onCorrect() {
   const scr = B.scr, units = scr.units.length;
-  save.total += units;
-  if (B.fails === 0) save.wrong = save.wrong.filter(w => w.id !== scr.id); // 一発で正解 → ふくしゅう完了
+  save.total += units; save['total' + UNIT_CAP[save.unit]] += units;
+  if (B.fails === 0) save[wKey()] = wList().filter(w => w.id !== scr.id); // 一発で正解 → ふくしゅう完了
   persist();
   const mc = mcReward(units);
   const mcHtml = Object.keys(mc.got).length ? `<div class="mc-gain">🧱 ${Object.entries(mc.got).map(([n, c]) => `${n} ×${c}`).join('、')}　⏱ +${mc.added}秒${mc.full ? '（さいだい3分！ もうあそべるよ）' : ''}</div>` : '';
@@ -733,6 +1102,7 @@ function reveal() {
   scr.fields.forEach((f, i) => {
     const v = B.vals[i];
     if (f.t === 'frac') { f.vm.mixed = false; v.n = String(f.ans[0]); v.d = String(f.ans[1]); v.w = ''; }
+    else if (f.t === 'sel') v.v = [].concat(f.ans)[0];
     else if (f.t === 'word') { v.v = f.ans[0]; const inp = $(`#stem .wtext[data-i="${i}"]`); if (inp) inp.value = v.v; }
     else v.v = String(f.ans);
   });
@@ -745,6 +1115,10 @@ function init() {
   document.addEventListener('pointerdown', () => AC(), { once: true });
   $('#goQuiz').onclick = () => { SFX.click(); view('quiz'); if (!B) loadScreen(); };
   $('#qBack').onclick = () => view('start');
+  $$('.unit-tab').forEach(b => { b.onclick = () => { // 単元の切りかえ：出題中の問題をリセットして、えらんだ単元だけを出す
+    if (save.unit !== b.dataset.unit) { save.unit = b.dataset.unit; persist(); B = null; lastId = ''; since = 0; }
+    SFX.click(); status();
+  }; });
   $('#tSound').onclick = () => { save.sound = !save.sound; persist(); status(); SFX.click(); };
   $('#hintBtn').onclick = () => {
     const s = B.scr, hb = $('#hintBox'); hb.hidden = false;
@@ -768,6 +1142,6 @@ function init() {
   window.addEventListener('pageshow', status);
   if (location.hash === '#quiz') $('#goQuiz').click(); else view('start');
 }
-window.__BW = { genScreen, gradeScreen, mcState, cur: () => B };
+window.__BW = { genScreen, genArea, AREA_KEYS, gradeScreen, mcState, cur: () => B };
 document.addEventListener('DOMContentLoaded', init);
 })();

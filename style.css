@@ -174,3 +174,34 @@ body.quizzing #pad { display: block; }
   body.quizzing .q-card { padding: 12px 18px; }
 }
 .pill:empty { display: none; }
+.pill.unit { background: #2f56c9; }
+
+/* 単元の切りかえ（スタート画面） */
+.unit-tabs { display: flex; gap: 10px; justify-content: center; margin: 14px auto 0; max-width: 520px; }
+.unit-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0; padding: 10px 8px; border-radius: 14px; border: 3px solid rgba(255, 255, 255, .6); background: rgba(0, 0, 0, .35); color: #fff; font: inherit; box-shadow: 0 4px 0 rgba(0, 0, 0, .3); }
+.unit-tab b { font-size: 1.1rem; }
+.unit-tab small { font-size: .78rem; opacity: .9; }
+.unit-tab.on { background: linear-gradient(#ffcf4d, #f59e0b); color: #3a2400; border-color: #fff3b0; }
+
+/* 「10. 面積」の図・表 */
+.viz.area { max-width: 480px; }
+.ar-shape { fill: #dbeafe; stroke: #1e3a8a; stroke-width: 2.6; stroke-linejoin: round; }
+.ar-pent { fill: rgba(219, 234, 254, .55); stroke: #1e3a8a; stroke-width: 3.4; stroke-linejoin: round; }
+.ar-s { stroke: #1e3a8a; stroke-width: 2.2; }
+.ar-dim { stroke: #1e3a8a; stroke-width: 2.2; }
+.ar-h { stroke: #d1242f; stroke-width: 2.4; stroke-dasharray: 5 4; fill: none; }
+.ar-d { stroke: #64748b; stroke-width: 1.6; stroke-dasharray: 3 4; fill: none; }
+.ar-ra { stroke: #d1242f; stroke-width: 2.4; fill: none; }
+.ar-grid { stroke: #b6c4d8; stroke-width: 1; }
+.ar-unit { fill: #fff; stroke: #1e3a8a; stroke-width: 2; }
+.ar-col { fill: rgba(251, 146, 60, .6); stroke: #9a3412; stroke-width: 2.4; stroke-linejoin: round; }
+.ar-white { fill: #fff; stroke: #334155; stroke-width: 2.4; stroke-linejoin: round; }
+.ar-t1 { fill: rgba(253, 224, 71, .5); } .ar-t2 { fill: rgba(74, 222, 128, .45); } .ar-t3 { fill: rgba(96, 165, 250, .45); }
+.ar-t { font-size: 16px; font-weight: 800; fill: #1f2937; paint-order: stroke; stroke: #fff; stroke-width: 3.5px; stroke-linejoin: round; }
+.tblwrap { overflow-x: auto; margin: 4px 0; }
+.ptbl { border-collapse: collapse; font-size: .85em; line-height: 1.5; }
+.ptbl th, .ptbl td { border: 2px solid #556; padding: 2px 6px; text-align: center; white-space: nowrap; }
+.ptbl th { background: #eef2ff; }
+.ptbl .slot { min-width: 1.5em; font-size: .95rem; padding: 0 .1em; }
+.ptbl th, .ptbl td { padding: 2px 4px; }
+.fld.t-num, .fld.t-sel { flex-direction: row; align-items: center; }
